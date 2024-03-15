@@ -1,0 +1,26 @@
+{
+  "name": "responsive-virtual-scroll",
+  "$schema": "../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "responsive-virtual-scroll/src",
+  "prefix": "ngx-responsive-virtual-scroll",
+  "tags": [],
+  "projectType": "library",
+  "targets": {
+    "build": {
+      "executor": "@nx/angular:package",
+      "outputs": ["{workspaceRoot}/dist/{projectRoot}"],
+      "options": {
+        "project": "responsive-virtual-scroll/ng-package.json"
+      },
+      "configurations": {
+        "production": {
+          "tsConfig": "responsive-virtual-scroll/tsconfig.lib.prod.json"
+        },
+        "development": {
+          "tsConfig": "responsive-virtual-scroll/tsconfig.lib.json"
+        }
+      },
+      "defaultConfiguration": "production"
+    }
+  }
+}
