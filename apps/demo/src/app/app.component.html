@@ -1,2 +1,46 @@
-<ngx-responsive-virtual-scroll-nx-welcome></ngx-responsive-virtual-scroll-nx-welcome>
-<router-outlet></router-outlet>
+<div class="outer-container">
+  <div class="inner-container">
+    <div class="header">
+      <h1>ngx-virtualscroll</h1>
+      <!--<a routerLink="/about">about &#187;</a>-->
+    </div>
+    <button (click)="expandSidebar = !expandSidebar">Expand Sidebar</button>
+    <div style="display: flex; flex-wrap: nowrap; gap: 10px; height: 100%">
+      <div class="border-wrapper">
+        <ngx-responsive-virtual-scroll
+          [items]="data$"
+          [itemWidth]="240"
+          [itemHeight]="200"
+          [stretchItemsToFill]="true"
+          [autoScrollOnResize]="true"
+        >
+          <ng-template let-item let-row="row" let-column="column">
+            <div class="cell">
+              <div class="cell-content">
+                <div class="cell-info">
+                  <span>Row: {{ row }}</span
+                  ><br />
+                  <span>Column: {{ column }}</span>
+                </div>
+                {{ item }}
+                <button (click)="handleClick()">click me</button>
+                <img
+                  loading="lazy"
+                  [src]="'https://picsum.photos/seed/' + item + '/100/100'"
+                  width="100px"
+                />
+              </div>
+            </div>
+          </ng-template>
+        </ngx-responsive-virtual-scroll>
+      </div>
+
+      <div
+        *ngIf="expandSidebar"
+        style="width: 350px; flex-shrink: 0; height: 100%"
+      >
+        fsdfd
+      </div>
+    </div>
+  </div>
+</div>
