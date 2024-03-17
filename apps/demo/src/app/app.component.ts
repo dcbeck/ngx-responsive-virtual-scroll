@@ -16,6 +16,7 @@ export class AppComponent {
   expandSidebar = false;
 
   handleClick() {
+    this.expandSidebar = true;
     console.log('clicked');
   }
 }

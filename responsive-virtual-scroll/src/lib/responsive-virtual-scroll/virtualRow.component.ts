@@ -20,6 +20,8 @@ import {
   fromEvent,
   takeUntil,
 } from 'rxjs';
+import { ScrollViewType } from './types';
+import { ScrollViewPadding } from './basic';
 
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -31,31 +33,36 @@ import {
       :host {
         position: absolute;
         width: 100%;
+        max-width: 100%;
+        max-height: 100%;
+        min-height: 0px;
+        min-width: 0px;
+        display: flex;
       }
 
-      .grid {
+      .ngx-responsive-virtual-scroll-row-grid {
+        flex: 1;
+        max-width: 100%;
+        max-height: 100%;
+        min-height: 0px;
+        min-width: 0px;
         position: relative;
-        display: none;
-      }
-
-      .viewRef {
         display: none;
       }
     `,
   ],
   template: `<div
-    class="grid"
+    class="ngx-responsive-virtual-scroll-row-grid"
     [ngStyle]="{
       display: displayHost,
       gridTemplateColumns: cssColumns,
-      width: calcWidth,
-      height: calcHeight,
-      maxHeight: calcHeight,
-      'padding.px': gapPx,
+      'paddingBottom.px': gapPx,
+      'paddingLeft.px': paddingLeft,
+      'paddingRight.px': paddingRight,
       'gridGap.px': gapPx
     }"
   >
-    <div #viewRef class="viewRef"></div>
+    <div #viewRef style="display: none;"></div>
   </div>`,
 })
 export class VirtualRowComponent implements OnDestroy {
@@ -74,22 +81,13 @@ export class VirtualRowComponent implements OnDestroy {
   displayHost = 'none';
 
   gapPx = 0;
-  calcWidth = '100%';
-  calcHeight = '100%';
+  paddingLeft = 0;
+  paddingRight = 0;
 
   private _translateY = 0;
   private unsubscribe$ = new Subject<void>();
 
-  constructor(private _cdr: ChangeDetectorRef) {
-    this.setGap(24);
-  }
-
-  setGap(gapInPx: number) {
-    this.gapPx = gapInPx;
-    this.calcWidth = `calc(100% - ${2 * gapInPx}px)`;
-    this.calcHeight = `calc(100% - ${ gapInPx}px)`;
-    this._cdr.markForCheck();
-  }
+  constructor(private _cdr: ChangeDetectorRef) {}
 
   get scrollItemFocused$(): Observable<ScrollItem> {
     return this._scrollItemFocus$.pipe(
@@ -112,6 +110,9 @@ export class VirtualRowComponent implements OnDestroy {
       index
     );
 
+    //const el =   view.rootNodes[0];
+    //todo Wrap in div: el.setAttribute('style', 'display: flex !important;');
+
     if (Array.isArray(view.rootNodes)) {
       const resizeEvents = view.rootNodes.map((node) =>
         fromEvent(node, 'mouseup')
@@ -128,23 +129,33 @@ export class VirtualRowComponent implements OnDestroy {
   }
 
   setSizeObservables(
-    numColumns: Observable<number>,
-    height: Observable<number>
+    numColumns$: Observable<number>,
+    height$: Observable<number>,
+    type$: Observable<ScrollViewType>,
+    gridGap$: Observable<number | undefined>,
+    padding$: Observable<ScrollViewPadding>
   ) {
-    numColumns
+    combineLatest({
+      columns: numColumns$,
+      height: height$,
+      gap: gridGap$,
+      padding: padding$,
+      type: type$,
+    })
       .pipe(takeUntil(this.unsubscribe$), distinctUntilChanged())
-      .subscribe((columns) => {
-        this.cssColumns = Array.from({ length: columns })
-          .map(() => '1fr')
-          .join(' ');
-        this._cdr.markForCheck();
-      });
+      .subscribe((data) => {
+        this.heightPx = data.height;
+        this.gapPx = data.gap ?? 0;
+        if (data.type === 'grid') {
+          this.cssColumns = Array.from({ length: data.columns })
+            .map(() => '1fr')
+            .join(' ');
+        }
 
-    height
-      .pipe(takeUntil(this.unsubscribe$), distinctUntilChanged())
-      .subscribe((height) => {
-        this.heightPx = height;
-        this.displayHost = 'grid';
+        if (this.heightPx !== undefined && this.heightPx !== null) {
+          this.displayHost = 'grid';
+        }
+
         this._cdr.markForCheck();
       });
   }

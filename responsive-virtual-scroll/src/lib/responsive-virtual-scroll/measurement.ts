@@ -38,10 +38,17 @@ export function calcScrollWindow(
 ): IVirtualScrollWindow {
   const numVirtualItems = numItems;
 
-  const requestedColumns =
-    options.numLimitColumns !== undefined
-      ? options.numLimitColumns
-      : measure.numPossibleColumns;
+  let requestedColumns: number | undefined;
+
+  if (options.type === 'list') {
+    requestedColumns = 1;
+  } else {
+    requestedColumns =
+      options.numLimitColumns !== undefined
+        ? options.numLimitColumns
+        : measure.numPossibleColumns;
+  }
+
   const numActualColumns = Math.max(
     Math.min(numVirtualItems, requestedColumns),
     1

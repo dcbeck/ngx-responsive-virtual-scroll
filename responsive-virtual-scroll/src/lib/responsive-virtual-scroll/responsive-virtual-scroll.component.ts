@@ -25,6 +25,7 @@ import {
   from,
   fromEvent,
   isObservable,
+  lastValueFrom,
   merge,
   Observable,
   of,
@@ -42,6 +43,7 @@ import {
   pairwise,
   scan,
   startWith,
+  take,
   takeUntil,
   tap,
   throttleTime,
@@ -52,6 +54,7 @@ import {
   IVirtualScrollOptions,
   IVirtualScrollState,
   IVirtualScrollWindow,
+  ScrollViewPadding,
 } from './basic';
 import {
   CmdOption,
@@ -77,6 +80,7 @@ import {
 } from './userCmd';
 import { VirtualRowComponent } from './virtualRow.component';
 import { CommonModule } from '@angular/common';
+import { ScrollViewType } from './types';
 
 export type TScrollGridRow<T> = { rowId: number; items: T[] };
 @Component({
@@ -90,42 +94,36 @@ export type TScrollGridRow<T> = { rowId: number; items: T[] };
       :host {
         display: block;
         height: 100%;
+        width: 100%;
+        max-width: 100%;
+        max-height: 100%;
+        min-height: 0px;
+        min-width: 0px;
         overflow-y: scroll;
         overflow-x: hidden;
       }
 
-      .ngx-scroll-container {
+      .ngx-responsive-virtual-scroll-container {
+        display: width;
         position: relative;
         width: 100%;
+        max-width: 100%;
+        min-height: 0px;
+        min-width: 0px;
       }
     `,
   ],
   template: ` <div
-    class="ngx-scroll-container"
-    [style.width]="stretchItemsToFill ? '100%' : width"
+    class="ngx-responsive-virtual-scroll-container"
+    [style.width]="stretchItems ? '100%' : width"
     [style.height.px]="height"
+    [style.marginTop.px]="marginTop"
+    [style.marginBottom.px]="marginBottom"
   >
     <div #viewRef><div></div></div>
   </div>`,
 })
 export class ResponsiveVirtualScrollComponent<T> implements OnInit, OnDestroy {
-  @ContentChild(TemplateRef, { static: true })
-  private _templateRef!: TemplateRef<ScrollItem>;
-
-  @ViewChild('viewRef', { static: true, read: ViewContainerRef })
-  private _viewContainer!: ViewContainerRef;
-
-  /**
-   * stretches items to fill up full container with.
-   * Items could be wider than the provided item with by some amount.
-   */
-  @Input() stretchItemsToFill = false;
-
-  /** if activated scroll view automatically scrolls to item,
-   * which was focused (with mouse/touch) at last.
-   */
-  @Input() autoScrollOnResize = false;
-
   @Input() set items(itemValues: T[] | Observable<T[]>) {
     if (isObservable(itemValues)) {
       this.vsData = itemValues;
@@ -134,16 +132,89 @@ export class ResponsiveVirtualScrollComponent<T> implements OnInit, OnDestroy {
     }
   }
 
-  @Input() set itemWidth(width: number) {
+  @Input() set type(type: ScrollViewType) {
+    this.type$.next(type);
+    if (type === 'list') {
+      this.actualColumns$.next(1);
+    }
+  }
+
+  /**
+   * stretches items to fill up full container with.
+   * Items could be wider than the provided item with by some amount.
+   */
+  @Input() stretchItems = false;
+
+  /** if activated scroll view automatically scrolls to item,
+   * which was focused (with mouse/touch) at last.
+   */
+  @Input() autoScrollOnResize = false;
+
+  @Input() set scrollViewPadding(
+    padding:
+      | number
+      | { x: number; y: number }
+      | { top: number; left: number; bottom: number; right: number }
+  ) {
+    const p = padding as any;
+    if (typeof p === 'number' && Number.isFinite(p)) {
+      this.padding$.next({
+        top: p,
+        bottom: p,
+        left: p,
+        right: p,
+      });
+    } else if (
+      typeof p.x === 'number' &&
+      Number.isFinite(p.x) &&
+      typeof p.y === 'number' &&
+      Number.isFinite(p.y)
+    ) {
+      this.padding$.next({
+        top: p.y,
+        bottom: p.y,
+        left: p.x,
+        right: p.x,
+      });
+    } else if (
+      typeof p.top === 'number' &&
+      Number.isFinite(p.top) &&
+      typeof p.left === 'number' &&
+      Number.isFinite(p.left) &&
+      typeof p.right === 'number' &&
+      Number.isFinite(p.right) &&
+      typeof p.bottom === 'number' &&
+      Number.isFinite(p.bottom)
+    ) {
+      this.padding$.next({
+        top: p.top,
+        bottom: p.bottom,
+        left: p.left,
+        right: p.right,
+      });
+    }
+  }
+
+  //
+
+  @Input() set itemGap(gap: number) {
+    this.itemGap$.next(gap);
+  }
+
+  @Input() set gridItemWidth(width: number) {
     this.itemWidth$.next(width);
   }
 
-  @Input({ required: true }) set itemHeight(height: number) {
+  @Input({ required: true }) set rowHeight(height: number) {
     this.itemHeight$.next(height);
   }
 
-  @Input() set numAdditionalRows(rows: number) {
-    this.numAdditionalRows$.next(rows);
+  @Input() set gridMaxColumns(maxColumns: number) {
+    this.numLimitColumns$.next(maxColumns);
+  }
+
+  @Input() set renderAdditionalRows(numRows: number) {
+    this.numAdditionalRows$.next(numRows);
   }
 
   @Output() numColumnsChanged = new EventEmitter<number>();
@@ -157,14 +228,31 @@ export class ResponsiveVirtualScrollComponent<T> implements OnInit, OnDestroy {
 
   height = 0;
   width = '0px';
+  marginTop = 0;
+  marginBottom = 0;
+
+  @ContentChild(TemplateRef, { static: true })
+  private _templateRef!: TemplateRef<ScrollItem>;
+
+  @ViewChild('viewRef', { static: true, read: ViewContainerRef })
+  private _viewContainer!: ViewContainerRef;
 
   private lastFocusedItem: ScrollItem | null = null;
 
   private _subs: Subscription[] = [];
 
-  private itemWidth$ = new BehaviorSubject<number>(100);
+  private itemWidth$ = new BehaviorSubject<number>(200);
+  private type$ = new BehaviorSubject<ScrollViewType>('grid');
+  private padding$ = new BehaviorSubject<ScrollViewPadding>({
+    top: 0,
+    bottom: 0,
+    left: 0,
+    right: 0,
+  });
+  private itemGap$ = new BehaviorSubject<number | undefined>(undefined);
   private itemHeight$ = new ReplaySubject<number>(1);
   private numAdditionalRows$ = new BehaviorSubject<number>(1);
+  private numLimitColumns$ = new BehaviorSubject<number | undefined>(undefined);
   private resizeObserver: ResizeObserver;
   private hostResize$ = new Subject<any>();
   private actualColumns$ = new ReplaySubject<number>(1);
@@ -180,6 +268,10 @@ export class ResponsiveVirtualScrollComponent<T> implements OnInit, OnDestroy {
     itemWidth: this.itemWidth$,
     itemHeight: this.itemHeight$,
     numAdditionalRows: this.numAdditionalRows$,
+    numLimitColumns: this.numLimitColumns$,
+    itemGap: this.itemGap$,
+    type: this.type$,
+    padding: this.padding$,
   });
 
   constructor(
@@ -198,36 +290,36 @@ export class ResponsiveVirtualScrollComponent<T> implements OnInit, OnDestroy {
       .pipe(takeUntil(this.unsubscribe$), distinctUntilChanged())
       .subscribe((columns) => {
         this.numColumnsChanged.emit(columns);
-        setTimeout(() => {
+
+        setTimeout(async () => {
           const index = this.lastFocusedItem?.$implicit;
           this.rerenderScrollView();
-          setTimeout(() => {
-            const win = this.scrollWindow$.value;
+
+          const win = this.scrollWindow$.value;
+
+          if (this.autoScrollOnResize && index !== undefined && win !== null) {
+            const newRowIndex = Math.floor(index / (columns || 1));
             if (
-              this.autoScrollOnResize &&
-              index !== undefined &&
-              win !== null
+              !(
+                newRowIndex > win.visibleStartRow &&
+                newRowIndex < win.visibleEndRow
+              )
             ) {
-              const newRow = Math.floor(index / (columns || 1));
-              if (
-                !(newRow > win.visibleStartRow && newRow < win.visibleEndRow)
-              ) {
-                this.vsUserCmd.next(new FocusItemCmd(index));
-              } 
+              await lastValueFrom(
+                this._obsService.scrollWin$.pipe(debounceTime(20), take(1))
+              );
+              this.vsUserCmd.next(new FocusItemCmd(index));
             }
-          });
+          }
         });
       });
   }
 
   rerenderScrollView = () => {
-    this.executesAutomaticScroll = true;
-    //workaround to rerender scroll view
-    this.setScrollTop(this.getScrollTop() + 1);
-    this.setScrollTop(this.getScrollTop() - 1);
-    setTimeout(() => {
-      this.executesAutomaticScroll = false;
-    }, 200);
+    //this._cdr.markForCheck();
+    this._zone.run(() => {
+      //noop
+    });
   };
 
   getScrollTop = () => this._elem.nativeElement.scrollTop;
@@ -253,7 +345,17 @@ export class ResponsiveVirtualScrollComponent<T> implements OnInit, OnDestroy {
 
     const options$ = connectable(
       this.vsOptions.pipe(
-        tap(() => {
+        tap((options) => {
+          this.marginTop = options.padding.top;
+          this.marginBottom = Math.max(
+            0,
+            options.itemGap
+              ? options.padding.bottom - options.itemGap
+              : options.padding.bottom
+          );
+
+          console.log(this.marginBottom);
+
           setTimeout(() => {
             this.rerenderScrollView();
           });
@@ -555,7 +657,10 @@ export class ResponsiveVirtualScrollComponent<T> implements OnInit, OnDestroy {
 
         newRow.instance.setSizeObservables(
           this.actualColumns$,
-          this.itemHeight$
+          this.itemHeight$,
+          this.type$,
+          this.itemGap$,
+          this.padding$
         );
 
         newRow.instance.scrollItemFocused$
@@ -759,7 +864,9 @@ export class ResponsiveVirtualScrollComponent<T> implements OnInit, OnDestroy {
 
           if (state.scrollWindow) {
             this.scrollWindow$.next(state.scrollWindow);
-            this.actualColumns$.next(state.scrollWindow.numActualColumns);
+            if (this.type$.value === 'grid') {
+              this.actualColumns$.next(state.scrollWindow.numActualColumns);
+            }
           }
 
           if (state.scrollWindow?.virtualHeight === undefined) return;
@@ -788,7 +895,6 @@ export class ResponsiveVirtualScrollComponent<T> implements OnInit, OnDestroy {
 
   ngOnDestroy() {
     this._subs.forEach((sub) => sub.unsubscribe());
-
     this.resizeObserver.unobserve(this._elem.nativeElement);
     this.resizeObserver.disconnect();
     this.hostResize$.complete();
@@ -800,5 +906,9 @@ export class ResponsiveVirtualScrollComponent<T> implements OnInit, OnDestroy {
     this.unsubscribe$.complete();
     this.vsUserCmd.complete();
     this.scrollWindow$.complete();
+    this.numLimitColumns$.complete();
+    this.type$.complete();
+    this.itemGap$.complete();
+    this.padding$.complete();
   }
 }

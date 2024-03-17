@@ -4,15 +4,18 @@
       <h1>ngx-virtualscroll</h1>
       <!--<a routerLink="/about">about &#187;</a>-->
     </div>
-    <button (click)="expandSidebar = !expandSidebar">Expand Sidebar</button>
+
     <div style="display: flex; flex-wrap: nowrap; gap: 10px; height: 100%">
       <div class="border-wrapper">
         <ngx-responsive-virtual-scroll
           [items]="data$"
-          [itemWidth]="240"
-          [itemHeight]="200"
-          [stretchItemsToFill]="true"
+          [stretchItems]="true"
+          [itemGap]="24"
+          [type]="'grid'"
           [autoScrollOnResize]="true"
+          [gridMaxColumns]="4"
+          [gridItemWidth]="200"
+          [rowHeight]="200"
         >
           <ng-template let-item let-row="row" let-column="column">
             <div class="cell">
@@ -39,7 +42,7 @@
         *ngIf="expandSidebar"
         style="width: 350px; flex-shrink: 0; height: 100%"
       >
-        fsdfd
+        <button (click)="expandSidebar = false">collapse</button>
       </div>
     </div>
   </div>
