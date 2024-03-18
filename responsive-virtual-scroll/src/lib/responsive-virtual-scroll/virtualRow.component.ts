@@ -83,19 +83,28 @@ export class VirtualRowComponent implements OnDestroy {
   gapPx = 0;
   paddingLeft = 0;
   paddingRight = 0;
+  numColumns = 0;
 
   private _translateY = 0;
   private unsubscribe$ = new Subject<void>();
 
   constructor(private _cdr: ChangeDetectorRef) {}
 
-  get scrollItemFocused$(): Observable<ScrollItem> {
+  get scrollItemFocused$(): Observable<{
+    row: number;
+    column: number;
+    index: number;
+  }> {
     return this._scrollItemFocus$.pipe(
-      distinctUntilChanged((prev, curr) => prev.$implicit === curr.$implicit)
+      distinctUntilChanged()
     );
   }
 
-  private _scrollItemFocus$ = new Subject<ScrollItem>();
+  private _scrollItemFocus$ = new Subject<{
+    row: number;
+    column: number;
+    index: number;
+  }>();
 
   addItem(
     template: TemplateRef<ScrollItem>,
@@ -121,7 +130,12 @@ export class VirtualRowComponent implements OnDestroy {
       combineLatest(resizeEvents)
         .pipe(takeUntil(this.unsubscribe$))
         .subscribe(() => {
-          this._scrollItemFocus$.next({ ...context });
+          const { row, column } = context;
+          this._scrollItemFocus$.next({
+            index: row * this.numColumns + column,
+            row,
+            column,
+          });
         });
     }
 
@@ -148,6 +162,7 @@ export class VirtualRowComponent implements OnDestroy {
         this.gapPx = data.gap ?? 0;
         this.paddingLeft = data.padding.left;
         this.paddingRight = data.padding.right;
+        this.numColumns = data.columns;
         if (data.type === 'grid') {
           this.cssColumns = Array.from({ length: data.columns })
             .map(() => `minmax(0, 1fr)`)

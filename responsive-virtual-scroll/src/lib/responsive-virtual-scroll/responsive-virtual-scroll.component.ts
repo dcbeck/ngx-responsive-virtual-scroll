@@ -124,7 +124,7 @@ export type TScrollGridRow<T> = { rowId: number; items: T[] };
   </div>`,
 })
 export class ResponsiveVirtualScrollComponent<T> implements OnInit, OnDestroy {
-  @Input({required: true}) set items(itemValues: T[] | Observable<T[]>) {
+  @Input({ required: true }) set items(itemValues: T[] | Observable<T[]>) {
     if (isObservable(itemValues)) {
       this.vsData = itemValues;
     } else {
@@ -237,7 +237,11 @@ export class ResponsiveVirtualScrollComponent<T> implements OnInit, OnDestroy {
   @ViewChild('viewRef', { static: true, read: ViewContainerRef })
   private _viewContainer!: ViewContainerRef;
 
-  private lastFocusedItem: ScrollItem | null = null;
+  private lastFocusedItem: {
+    row: number;
+    column: number;
+    index: number;
+  } | null = null;
 
   private _subs: Subscription[] = [];
 
@@ -292,13 +296,18 @@ export class ResponsiveVirtualScrollComponent<T> implements OnInit, OnDestroy {
         this.columnCountChange.emit(columns);
 
         setTimeout(async () => {
-          const index = this.lastFocusedItem?.$implicit;
+          const index = this.lastFocusedItem?.index;
           this.rerenderScrollView();
 
           const win = this.scrollWindow$.value;
 
+
           if (this.autoScrollOnResize && index !== undefined && win !== null) {
-            const newRowIndex = Math.floor(index / (columns || 1));
+            const newRowIndex = Math.max(
+              0,
+              Math.floor((index + 1) / (columns || 1))
+            );
+
             if (
               !(
                 newRowIndex > win.visibleStartRow &&
@@ -353,8 +362,6 @@ export class ResponsiveVirtualScrollComponent<T> implements OnInit, OnDestroy {
               ? options.padding.bottom - options.itemGap
               : options.padding.bottom
           );
-
-          console.log(this.marginBottom);
 
           setTimeout(() => {
             this.rerenderScrollView();

@@ -15,8 +15,6 @@ export function calcMeasure(
       ? Math.floor(rect.width / options.itemWidth)
       : 0;
 
-  console.log(options.itemWidth);
-
   return {
     containerHeight: rect.height,
     containerWidth: rect.width,
