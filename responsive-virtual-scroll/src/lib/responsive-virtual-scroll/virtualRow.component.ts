@@ -95,9 +95,7 @@ export class VirtualRowComponent implements OnDestroy {
     column: number;
     index: number;
   }> {
-    return this._scrollItemFocus$.pipe(
-      distinctUntilChanged()
-    );
+    return this._scrollItemFocus$.pipe(distinctUntilChanged());
   }
 
   private _scrollItemFocus$ = new Subject<{

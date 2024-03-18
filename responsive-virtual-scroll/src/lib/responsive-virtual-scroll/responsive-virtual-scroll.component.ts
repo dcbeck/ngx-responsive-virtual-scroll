@@ -126,9 +126,9 @@ export type TScrollGridRow<T> = { rowId: number; items: T[] };
 export class ResponsiveVirtualScrollComponent<T> implements OnInit, OnDestroy {
   @Input({ required: true }) set items(itemValues: T[] | Observable<T[]>) {
     if (isObservable(itemValues)) {
-      this.vsData = itemValues;
+      this.itemStreamChanged$.next(itemValues);
     } else {
-      this.vsData = new BehaviorSubject(itemValues);
+      this.itemStreamChanged$.next(new BehaviorSubject(itemValues));
     }
   }
 
@@ -267,7 +267,8 @@ export class ResponsiveVirtualScrollComponent<T> implements OnInit, OnDestroy {
 
   private executesAutomaticScroll = false;
 
-  vsData: Observable<T[]> = new BehaviorSubject([]);
+  private itemStreamChanged$ = new ReplaySubject<Observable<T[]>>(1);
+
   vsOptions: Observable<IVirtualScrollOptions> = combineLatest({
     itemWidth: this.itemWidth$,
     itemHeight: this.itemHeight$,
@@ -289,10 +290,42 @@ export class ResponsiveVirtualScrollComponent<T> implements OnInit, OnDestroy {
     });
 
     this.resizeObserver.observe(this._elem.nativeElement);
+  }
 
-    this.actualColumns$
-      .pipe(takeUntil(this.unsubscribe$), distinctUntilChanged())
-      .subscribe((columns) => {
+  rerenderScrollView = () => {
+    this._cdr.markForCheck();
+    this._zone.run(() => {
+      //noop
+    });
+  };
+
+  getScrollTop = () => this._elem.nativeElement.scrollTop;
+
+  setScrollTop = (scrollTop: number) => {
+    this._elem.nativeElement.scrollTop = scrollTop;
+  };
+
+  ngOnInit() {
+    this.itemStreamChanged$
+      .pipe(takeUntil(this.unsubscribe$))
+      .subscribe((itemStream) => {
+        this.initialize(itemStream);
+
+        this.rerenderScrollView();
+      });
+  }
+
+  initialize(dataObservable: Observable<T[]>) {
+    //reset all
+    if (this._subs.length > 0) {
+      this._subs.forEach((sub) => sub.unsubscribe());
+      this._subs = [];
+      this._elem.nativeElement.scrollTop = 0;
+      this._viewContainer.clear();
+    }
+
+    this._subs.push(
+      this.actualColumns$.pipe(distinctUntilChanged()).subscribe((columns) => {
         this.columnCountChange.emit(columns);
 
         setTimeout(async () => {
@@ -300,7 +333,6 @@ export class ResponsiveVirtualScrollComponent<T> implements OnInit, OnDestroy {
           this.rerenderScrollView();
 
           const win = this.scrollWindow$.value;
-
 
           if (this.autoScrollOnResize && index !== undefined && win !== null) {
             const newRowIndex = Math.max(
@@ -321,29 +353,15 @@ export class ResponsiveVirtualScrollComponent<T> implements OnInit, OnDestroy {
             }
           }
         });
-      });
-  }
+      })
+    );
 
-  rerenderScrollView = () => {
-    //this._cdr.markForCheck();
-    this._zone.run(() => {
-      //noop
-    });
-  };
-
-  getScrollTop = () => this._elem.nativeElement.scrollTop;
-
-  setScrollTop = (scrollTop: number) => {
-    this._elem.nativeElement.scrollTop = scrollTop;
-  };
-
-  ngOnInit() {
     const getContainerRect = () =>
       this._elem.nativeElement.getBoundingClientRect();
 
     const initData: any[] = [];
 
-    const data$ = connectable(this.vsData.pipe(startWith(initData)), {
+    const data$ = connectable(dataObservable.pipe(startWith(initData)), {
       connector: () => new Subject(),
       resetOnDisconnect: false,
     });
@@ -411,15 +429,22 @@ export class ResponsiveVirtualScrollComponent<T> implements OnInit, OnDestroy {
       dataMeta$,
       options$,
     ]).pipe(
-      map(([scrollTop, measurement, [dataTimestamp, dataLength], options]) =>
-        calcScrollWindow(
+      map(([scrollTop, measurement, [dataTimestamp, dataLength], options]) => {
+        console.log({
+          scrollTop,
+          measurement,
+          dataLength,
+          dataTimestamp,
+          options,
+        });
+        return calcScrollWindow(
           scrollTop,
           measurement,
           dataLength,
           dataTimestamp,
           options
-        )
-      ),
+        );
+      }),
       distinctUntilChanged((prevWin, curWin) => {
         return (
           prevWin.visibleStartRow === curWin.visibleStartRow &&

@@ -8,7 +8,7 @@
     <div style="display: flex; flex-wrap: nowrap; gap: 10px; height: 100%">
       <div class="border-wrapper">
         <ngx-responsive-virtual-scroll
-          [items]="data$"
+          [items]="dataToggle ? data$ : data2$"
           [type]="'grid'"
           [itemGap]="24"
           [stretchItems]="true"
@@ -60,6 +60,7 @@
         *ngIf="expandSidebar"
         style="width: 350px; flex-shrink: 0; height: 100%"
       >
+        <button (click)="dataToggle = !dataToggle">toggle.data</button>
         <button (click)="expandSidebar = false">collapse</button>
       </div>
     </div>
