@@ -146,6 +146,8 @@ export class VirtualRowComponent implements OnDestroy {
       .subscribe((data) => {
         this.heightPx = data.height;
         this.gapPx = data.gap ?? 0;
+        this.paddingLeft = data.padding.left;
+        this.paddingRight = data.padding.right;
         if (data.type === 'grid') {
           this.cssColumns = Array.from({ length: data.columns })
             .map(() => '1fr')

@@ -49,6 +49,7 @@ export class YourAppModule {}
     [gridMaxColumns]="4" 
     [gridItemWidth]="200" 
     [rowHeight]="200"
+    [renderAdditionalRows]="1"
     (columnCountChange)="handleChange($event)"
 >
   <ng-template let-item let-row="row" let-column="column">
@@ -69,24 +70,24 @@ export class YourAppModule {}
 
 #### `[items]`
 
-- **Type:** Observable<Array<any[]>> | Array<any[]>
+- **Type:** Observable<Array<any[]>> | Array<any[]> (required)
 - **Description:** An Array or Observable of items to be rendered in the virtual scroll.
 
 #### `[type]`
 
-- **Type:** 'list' | 'grid'
+- **Type:** 'list' | 'grid' (optional)
 - **Default value:** `'grid'`
 - **Description:** Type of layout for the virtual scroll. Can be `'list'` or `'grid'`.
 
 #### `[itemGap]`
 
-- **Type:** number
+- **Type:** number (optional)
 - **Default value:** `0`
 - **Description:** Gap in pixel between each item in the grid layout.
 
 #### `[stretchItems]`
 
-- **Type:** boolean
+- **Type:** boolean (optional)
 - **Default value:** `false`
 - **Description:** Whether to stretch items to fill the available space in the grid layout. Note: Items can vary in size due to stretching even if their item width is set
 
@@ -98,21 +99,27 @@ export class YourAppModule {}
 
 #### `[autoScrollOnResize]`
 
-- **Type:** boolean
+- **Type:** boolean (optional)
 - **Default value:** `false`
 - **Description:** Whether to automatically scroll to the last focused item when the viewport is resized.
 
 #### `[gridMaxColumns]`
 
-- **Type:** number
+- **Type:** number (optional)
 - **Default value:** `undefined`
 - **Description:** Maximum number of columns in the grid layout. Undefined, when you don't want to limit the max number of columns
 
 #### `[gridItemWidth]`
 
-- **Type:** number
+- **Type:** number (optional)
 - **Default value:** `200`
 - **Description:** Width of each grid item.
+
+#### `[renderAdditionalRows]`
+
+- **Type:** number (optional)
+- **Default value:** `1`
+- **Description:** Number of rows which are rendered before offscreen to improve lazy loading.
 
 ### Template
 
@@ -121,6 +128,7 @@ export class YourAppModule {}
 - **Description:** Define the template for each item in the virtual scroll.
 - **Access data item properties:** Use `{{item}}`.
 - **Access row and column index of current item:** Use `let-row="row"` and `let-column="column"` respectively.
+
 
 
 ### Outputs

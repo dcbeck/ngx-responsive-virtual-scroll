@@ -124,7 +124,7 @@ export type TScrollGridRow<T> = { rowId: number; items: T[] };
   </div>`,
 })
 export class ResponsiveVirtualScrollComponent<T> implements OnInit, OnDestroy {
-  @Input() set items(itemValues: T[] | Observable<T[]>) {
+  @Input({required: true}) set items(itemValues: T[] | Observable<T[]>) {
     if (isObservable(itemValues)) {
       this.vsData = itemValues;
     } else {
