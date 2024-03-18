@@ -430,13 +430,6 @@ export class ResponsiveVirtualScrollComponent<T> implements OnInit, OnDestroy {
       options$,
     ]).pipe(
       map(([scrollTop, measurement, [dataTimestamp, dataLength], options]) => {
-        console.log({
-          scrollTop,
-          measurement,
-          dataLength,
-          dataTimestamp,
-          options,
-        });
         return calcScrollWindow(
           scrollTop,
           measurement,
