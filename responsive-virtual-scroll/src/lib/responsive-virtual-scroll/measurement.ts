@@ -15,6 +15,8 @@ export function calcMeasure(
       ? Math.floor(rect.width / options.itemWidth)
       : 0;
 
+  console.log(options.itemWidth);
+
   return {
     containerHeight: rect.height,
     containerWidth: rect.width,
@@ -43,10 +45,14 @@ export function calcScrollWindow(
   if (options.type === 'list') {
     requestedColumns = 1;
   } else {
-    requestedColumns =
-      options.numLimitColumns !== undefined
-        ? options.numLimitColumns
-        : measure.numPossibleColumns;
+    requestedColumns = measure.numPossibleColumns;
+
+    if (
+      options.numLimitColumns !== undefined &&
+      requestedColumns > options.numLimitColumns
+    ) {
+      requestedColumns = options.numLimitColumns;
+    }
   }
 
   const numActualColumns = Math.max(

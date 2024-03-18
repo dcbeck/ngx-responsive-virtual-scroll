@@ -150,7 +150,7 @@ export class VirtualRowComponent implements OnDestroy {
         this.paddingRight = data.padding.right;
         if (data.type === 'grid') {
           this.cssColumns = Array.from({ length: data.columns })
-            .map(() => '1fr')
+            .map(() => `minmax(0, 1fr)`)
             .join(' ');
         }
 

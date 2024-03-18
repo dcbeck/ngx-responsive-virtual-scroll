@@ -18,7 +18,6 @@
           [gridItemWidth]="200"
           [rowHeight]="200"
           [renderAdditionalRows]="1"
-        
         >
           <ng-template let-item let-row="row" let-column="column">
             <div class="cell">
@@ -29,12 +28,28 @@
                   <span>Column: {{ column }}</span>
                 </div>
                 {{ item }}
+
                 <button (click)="handleClick()">click me</button>
                 <img
                   loading="lazy"
                   [src]="'https://picsum.photos/seed/' + item + '/100/100'"
                   width="100px"
                 />
+                <div
+                  style="
+                    white-space: nowrap;
+                    max-width: 100%;
+                    min-width: 0px;
+                    text-overflow: ellipsis;
+                    overflow: hidden;
+                  "
+                >
+                  Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed
+                  diam nonumy eirmod tempor invidunt ut labore et dolore magna
+                  aliquyam erat, sed diam voluptua. At vero eos et accusam et
+                  justo duo dolores et ea rebum. Stet clita kasd gubergren, no
+                  sea t
+                </div>
               </div>
             </div>
           </ng-template>

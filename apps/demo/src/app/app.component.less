@@ -44,6 +44,9 @@ a {
 .cell {
   display: flex;
   position: relative;
+  min-width: 0;
+  max-width: 100%;
+
 }
 
 .cell-content {
@@ -53,7 +56,11 @@ a {
   border: 1px solid rgba(100, 100, 111, 0.1);
   padding: 10px;
   position: relative;
+  min-width: 0;
+  max-width: 100%;
   flex: 1;
+  flex-shrink: 1;
+  overflow: hidden;
 }
 
 .cell-info {
