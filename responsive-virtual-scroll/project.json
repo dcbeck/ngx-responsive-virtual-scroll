@@ -3,7 +3,7 @@
   "$schema": "../node_modules/nx/schemas/project-schema.json",
   "sourceRoot": "responsive-virtual-scroll/src",
   "prefix": "ngx-responsive-virtual-scroll",
-  "tags": [],
+  "tags": ["scroll", "angular", "angular 16", "virtual scroll", "virtual scroll grid"],
   "projectType": "library",
   "targets": {
     "build": {

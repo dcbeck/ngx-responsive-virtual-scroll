@@ -217,7 +217,7 @@ export class ResponsiveVirtualScrollComponent<T> implements OnInit, OnDestroy {
     this.numAdditionalRows$.next(numRows);
   }
 
-  @Output() numColumnsChanged = new EventEmitter<number>();
+  @Output() columnCountChange = new EventEmitter<number>();
 
   private vsUserCmd = new Subject<IUserCmd>();
 
@@ -289,7 +289,7 @@ export class ResponsiveVirtualScrollComponent<T> implements OnInit, OnDestroy {
     this.actualColumns$
       .pipe(takeUntil(this.unsubscribe$), distinctUntilChanged())
       .subscribe((columns) => {
-        this.numColumnsChanged.emit(columns);
+        this.columnCountChange.emit(columns);
 
         setTimeout(async () => {
           const index = this.lastFocusedItem?.$implicit;

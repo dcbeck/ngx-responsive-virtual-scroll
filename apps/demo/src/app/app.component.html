@@ -9,13 +9,15 @@
       <div class="border-wrapper">
         <ngx-responsive-virtual-scroll
           [items]="data$"
-          [stretchItems]="true"
-          [itemGap]="24"
           [type]="'grid'"
+          [itemGap]="24"
+          [stretchItems]="true"
+          [scrollViewPadding]="24"
           [autoScrollOnResize]="true"
           [gridMaxColumns]="4"
           [gridItemWidth]="200"
           [rowHeight]="200"
+        
         >
           <ng-template let-item let-row="row" let-column="column">
             <div class="cell">

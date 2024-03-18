@@ -1,6 +1,7 @@
 {
   "name": "@ngx-responsive-virtual-scroll/source",
-  "version": "0.0.1",
+  "version": "1.0.1",
+  "author": "Daniel Beck (https://github.com/dcbeck)",
   "license": "MIT",
   "scripts": {
     "demo": "nx run demo:serve",
