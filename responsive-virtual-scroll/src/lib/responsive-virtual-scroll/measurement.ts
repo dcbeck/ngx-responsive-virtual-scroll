@@ -53,10 +53,7 @@ export function calcScrollWindow(
     }
   }
 
-  const numActualColumns = Math.max(
-    Math.min(numVirtualItems, requestedColumns),
-    1
-  );
+  const numActualColumns = Math.max(requestedColumns, 1);
 
   const numVirtualRows = Math.ceil(
     numVirtualItems / Math.max(1, numActualColumns)

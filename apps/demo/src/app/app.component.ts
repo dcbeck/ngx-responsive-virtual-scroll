@@ -12,7 +12,7 @@ import { of } from 'rxjs';
   styleUrl: './app.component.less',
 })
 export class AppComponent {
-  data$ = Array.from({ length: 1000 }).map((_, i) => `${i}_data_1`);
+  data$ = Array.from({ length: 2 }).map((_, i) => `${i}_data_1`);
 
   data2$ = Array.from({ length: 1000 }).map((_, i) => `${i}_data_2`);
 
