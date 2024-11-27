@@ -7,10 +7,16 @@ It utilizes virtual scrolling techniques to only render the visible portion of t
 
 ## Features
 
-- **Virtual scrolling:** Render only the visible portion of the grid for improved performance.
-- **Support for large datasets:** Efficiently handle rendering of large datasets without performance degradation.
-- **Customizable grid layout:** Configure the grid layout according to your application's requirements.
-- **Responsive design:** Automatically adjust grid layout based on the viewport size.
+- 🚀 **Optimized Performance:** Renders only visible grid items to minimize memory usage
+- 📊 **Large Dataset Support:** Efficiently handles massive data collections
+- 🎨 **Flexible Grid Configuration:** Customizable layout and styling options
+- 📱 **Responsive Design:** Dynamically adjusts grid based on viewport size
+- 🔄 **Resize Handling:** Auto-scroll and column count change detection
+
+## Demo Page
+
+👉 [Live Demo](https://dcbeck.github.io/ngx-responsive-virtual-scroll-demo/)
+
 
 ## Installation
 
@@ -59,73 +65,24 @@ export class YourAppModule {}
 </ngx-responsive-virtual-scroll>
 ```
 
+## API Reference
+
 ### Inputs
 
-#### `[rowHeight]`
-
-- **Type:** number (required)
-- **Default value:** `undefined`
-- **Description:** Height of each row in the grid layout.
-
-#### `[items]`
-
-- **Type:** Observable<Array<any[]>> | Array<any[]>
-- **Description:** An Array or Observable of items to be rendered in the virtual scroll.
-
-#### `[type]`
-
-- **Type:** 'list' | 'grid'
-- **Default value:** `'grid'`
-- **Description:** Type of layout for the virtual scroll. Can be `'list'` or `'grid'`.
-
-#### `[itemGap]`
-
-- **Type:** number
-- **Default value:** `0`
-- **Description:** Gap in pixel between each item in the grid layout.
-
-#### `[stretchItems]`
-
-- **Type:** boolean
-- **Default value:** `false`
-- **Description:** Whether to stretch items to fill the available space in the grid layout. Note: Items can vary in size due to stretching even if their item width is set
-
-#### `[scrollViewPadding]`
-
-- **Type:** number | {x: number, y: number} | {top: number, bottom: number, left: number, right: number}
-- **Default value:** `0`
-- **Description:** Padding for the scroll view.
-
-#### `[autoScrollOnResize]`
-
-- **Type:** boolean
-- **Default value:** `false`
-- **Description:** Whether to automatically scroll to the last focused item when the viewport is resized.
-
-#### `[gridMaxColumns]`
-
-- **Type:** number
-- **Default value:** `undefined`
-- **Description:** Maximum number of columns in the grid layout. Undefined, when you don't want to limit the max number of columns
-
-#### `[gridItemWidth]`
-
-- **Type:** number
-- **Default value:** `200`
-- **Description:** Width of each grid item.
-
-### Template
-
-#### `<ng-template let-item let-row="row" let-column="column">`
-
-- **Description:** Define the template for each item in the virtual scroll.
-- **Access data item properties:** Use `{{item}}`.
-- **Access row and column index of current item:** Use `let-row="row"` and `let-column="column"` respectively.
-
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `[items]` | `Observable<any[]>` or `any[]` | - | Data source for rendering |
+| `[type]` | `'list'` or `'grid'` | `'grid'` | Layout type |
+| `[itemGap]` | `number` | `0` | Spacing between items |
+| `[gridMaxColumns]` | `number` | `undefined` | Maximum grid columns |
+| `[gridItemWidth]` | `number` | `200` | Width of grid items |
+| `[rowHeight]` | `number` | - | Height of each row |
+| `[stretchItems]` | `boolean` | `false` | Stretch items to fill space |
+| `[autoScrollOnResize]` | `boolean` | `false` | Scroll to last focused item on resize |
 
 ### Outputs
 
-#### `(columnCountChange)`
+| Event | Type | Description |
+|-------|------|-------------|
+| `(columnCountChange)` | `number` | Triggered when column count changes |
 
-- **Type:** event: number
-- **Description:** Outputs when the number of columns change (for example when the viewport was resized)

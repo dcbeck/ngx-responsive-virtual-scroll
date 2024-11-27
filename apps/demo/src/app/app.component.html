@@ -1,68 +1,277 @@
-<div class="outer-container">
-  <div class="inner-container">
-    <div class="header">
-      <h1>ngx-virtualscroll</h1>
-      <!--<a routerLink="/about">about &#187;</a>-->
-    </div>
+<div
+  class="h-[100svh] w-[100svw] overflow-hidden flex flex-col min-h-0 min-w-0 bg-slate-100"
+>
+  <div
+    class="flex-shrink-0 w-full p-4 bg-indigo text-white bg-amber-500 shadow-lg z-10 border-b-4 border-amber-600"
+  >
+    <h1 class="text-2xl font-semibold">ngx-responsive-virtual-scroll</h1>
+    <!--<a routerLink="/about">about &#187;</a>-->
+  </div>
 
-    <div style="display: flex; flex-wrap: nowrap; gap: 10px; height: 100%">
-      <div class="border-wrapper">
-        <ngx-responsive-virtual-scroll
-          [items]="dataToggle ? data$ : data2$"
-          [type]="'grid'"
-          [itemGap]="24"
-          [stretchItems]="true"
-          [scrollViewPadding]="24"
-          [autoScrollOnResize]="true"
-          [gridMaxColumns]="7"
-          [gridItemWidth]="200"
-          [rowHeight]="200"
-          [renderAdditionalRows]="1"
-        >
-          <ng-template let-item let-row="row" let-column="column">
-            <div class="cell">
-              <div class="cell-content">
-                <div class="cell-info">
-                  <span>Row: {{ row }}</span
-                  ><br />
-                  <span>Column: {{ column }}</span>
-                </div>
-                {{ item }}
-
-                <button (click)="handleClick()">click me</button>
-                <img
-               
-                  [src]="'https://picsum.photos/seed/' + item + '/100/100'"
-                  width="100px"
-                />
-                <div
-                  style="
-                    white-space: nowrap;
-                    max-width: 100%;
-                    min-width: 0px;
-                    text-overflow: ellipsis;
-                    overflow: hidden;
-                  "
-                >
-                  Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed
-                  diam nonumy eirmod tempor invidunt ut labore et dolore magna
-                  aliquyam erat, sed diam voluptua. At vero eos et accusam et
-                  justo duo dolores et ea rebum. Stet clita kasd gubergren, no
-                  sea t
-                </div>
-              </div>
-            </div>
-          </ng-template>
-        </ngx-responsive-virtual-scroll>
+  <div class="flex-1 min-h-0 min-w-0 w-full flex flex-nowrap h-full">
+    <aside class="w-64 bg-white p-4 shadow-md">
+      <div class="pb-6">
+        <label class="cursor-pointer items-center flex">
+          <input
+            type="checkbox"
+            class="form-checkbox h-5 w-5 text-blue-600 rounded focus:ring-blue-500"
+            [ngModel]="isGrid()"
+            (ngModelChange)="isGrid.set($event)"
+          />
+          <span class="ml-2 text-gray-700 select-none">Toggle grid/list</span>
+        </label>
       </div>
 
-      <div
-        *ngIf="expandSidebar"
-        style="width: 350px; flex-shrink: 0; height: 100%"
+      <h3 class="text-lg font-semibold mb-4">
+        {{ isGrid() ? 'Grid' : 'List' }} Settings
+      </h3>
+
+      <div class="flex flex-col w-full gap-4">
+        <div>
+          <label for="quantity" class="block text-gray-700 mb-2"
+            >Number of items</label
+          >
+
+          <input
+            type="number"
+            id="quantity"
+            [ngModel]="numberOfItems()"
+            (ngModelChange)="numberOfItems.set($event)"
+            min="0"
+            value="0"
+            class="w-full pl-8 pr-8 py-2 border rounded-md text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+
+        @if (isGrid()) {
+        <div>
+          <label for="maxItemsPerRow" class="block text-gray-700 mb-2"
+            >Max items per row</label
+          >
+
+          <input
+            type="number"
+            id="maxItemsPerRow"
+            [ngModel]="maxItemsPerRow()"
+            (ngModelChange)="maxItemsPerRow.set($event)"
+            min="0"
+            value="0"
+            class="w-full pl-8 pr-8 py-2 border rounded-md text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+
+        <div>
+          <label for="itemWidth" class="block text-gray-700 mb-2"
+            >Width of item</label
+          >
+
+          <input
+            type="number"
+            id="itemWidth"
+            [ngModel]="itemWidth()"
+            (ngModelChange)="itemWidth.set($event)"
+            min="0"
+            value="0"
+            class="w-full pl-8 pr-8 py-2 border rounded-md text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+
+        }
+
+        <div>
+          <label class="cursor-pointer items-center flex">
+            <input
+              type="checkbox"
+              class="form-checkbox h-5 w-5 text-blue-600 rounded focus:ring-blue-500"
+              [ngModel]="stretchItems()"
+              (ngModelChange)="stretchItems.set($event)"
+            />
+            <span class="ml-2 text-gray-700 select-none"
+              >Stretch items to full width</span
+            >
+          </label>
+        </div>
+
+        <div>
+          <label for="itemHeight" class="block text-gray-700 mb-2"
+            >Row height</label
+          >
+
+          <input
+            type="number"
+            id="itemHeight"
+            [ngModel]="rowHeight()"
+            (ngModelChange)="rowHeight.set($event)"
+            min="0"
+            value="0"
+            class="w-full pl-8 pr-8 py-2 border rounded-md text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+
+        <div>
+          <label for="itemGap" class="block text-gray-700 mb-2">Item gap</label>
+
+          <input
+            type="number"
+            id="itemGap"
+            [ngModel]="itemGap()"
+            (ngModelChange)="itemGap.set($event)"
+            min="0"
+            value="0"
+            class="w-full pl-8 pr-8 py-2 border rounded-md text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+
+        <div>
+          <label for="scrollViewPadding" class="block text-gray-700 mb-2"
+            >Scroll view padding</label
+          >
+
+          <input
+            type="number"
+            id="scrollViewPadding"
+            [ngModel]="scrollViewPadding()"
+            (ngModelChange)="scrollViewPadding.set($event)"
+            min="0"
+            value="0"
+            class="w-full pl-8 pr-8 py-2 border rounded-md text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+      </div>
+    </aside>
+
+    <div class="flex flex-row gap-1 w-full h-full flex-1 min-h-0 min-w-0">
+      @if (gridVisible) { @if (isGrid()) {
+      <ngx-responsive-virtual-scroll
+        class="rn-scrollbar"
+        [items]="data()"
+        [type]="'grid'"
+        [itemGap]="itemGap()"
+        [stretchItems]="stretchItems()"
+        [scrollViewPadding]="scrollViewPadding()"
+        [autoScrollOnResize]="true"
+        [gridMaxColumns]="maxItemsPerRow()"
+        [gridItemWidth]="itemWidth()"
+        [rowHeight]="rowHeight()"
+        [renderAdditionalRows]="1"
       >
-        <button (click)="dataToggle = !dataToggle">toggle.data</button>
-        <button (click)="expandSidebar = false">collapse</button>
-      </div>
+        <ng-template let-item let-row="row" let-column="column">
+          <div
+            class="bg-white rounded-lg max-w-full max-h-full flex flex-col shadow-md overflow-hidden transform transition hover:scale-105"
+            [ngClass]="{
+              'ring-4 ring-blue-500': item.index === selectedItem?.index
+            }"
+          >
+            <ngx-responsive-virtual-scroll-random-photo
+              class="w-full h-[30%]flex-shrink-0 overflow-hidden"
+              [seed]="item.id"
+            ></ngx-responsive-virtual-scroll-random-photo>
+            <div class="p-4 flex flex-col flex-1 w-full">
+              <h2
+                class="text-xl font-bold mb-2 text-gray-800 flex-shrink-0 truncate"
+              >
+                Card {{ item.index }}
+              </h2>
+              <p class="text-gray-600 mb-4 flex-1 line-clamp-2">
+                This item is in row {{ row }} and in column {{ column }}
+              </p>
+              <button
+                class="w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600 transition flex-shrink-0 truncate"
+                (click)="selectItem(item)"
+              >
+                Learn More
+              </button>
+            </div>
+          </div>
+        </ng-template>
+      </ngx-responsive-virtual-scroll>
+      } @else {
+      <ngx-responsive-virtual-scroll
+        class="rn-scrollbar"
+        [items]="data()"
+        [type]="'list'"
+        [itemGap]="itemGap()"
+        [stretchItems]="stretchItems()"
+        [scrollViewPadding]="scrollViewPadding()"
+        [autoScrollOnResize]="true"
+        [rowHeight]="rowHeight()"
+        [renderAdditionalRows]="1"
+      >
+        <ng-template let-item let-row="row" let-column="column">
+          <div
+            class="bg-white rounded-lg max-w-full max-h-full flex flex-col shadow-md overflow-hidden transform transition hover:scale-105 min-w-96"
+            [ngClass]="{
+              'ring-4 ring-blue-500': item.index === selectedItem?.index
+            }"
+          >
+            <img
+              [src]="item.imageUrl"
+              alt="Card Image"
+              class="w-full h-[30%] object-cover flex-shrink-0"
+              loading="lazy"
+            />
+            <div class="p-4 flex flex-col flex-1 w-full">
+              <h2
+                class="text-xl font-bold mb-2 text-gray-800 flex-shrink-0 truncate"
+              >
+                Card {{ item.index }}
+              </h2>
+              <p class="text-gray-600 mb-4 flex-1 line-clamp-2">
+                This item is in row {{ row }} and in column {{ column }}
+              </p>
+              <button
+                class="w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600 transition flex-shrink-0 truncate"
+                (click)="selectItem(item)"
+              >
+                Learn More
+              </button>
+            </div>
+          </div>
+        </ng-template>
+      </ngx-responsive-virtual-scroll>
+      } }
     </div>
+
+    @if (selectedItem) {
+    <aside class="w-72 bg-white px-4 shadow-md">
+      <div class="flex justify-between w-full items-center py-4">
+        <h2 class="text-xl font-bold">
+          Selected item {{ selectedItem.index }}
+        </h2>
+
+        <div
+          role="button"
+          class="text-black hover:text-blue-700 cursor-pointer rounded-full hover:bg-slate-200 h-7 w-7 items-center justify-center flex"
+          (click)="selectedItem = undefined"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke-width="1.5"
+            stroke="currentColor"
+            class="size-6"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M6 18 18 6M6 6l12 12"
+            />
+          </svg>
+        </div>
+      </div>
+
+      <div class="rounded-md shadow-md overflow-hidden">
+        <ngx-responsive-virtual-scroll-random-photo
+          class="w-full h-32 overflow-hidden"
+          [seed]="selectedItem.id"
+        ></ngx-responsive-virtual-scroll-random-photo>
+      </div>
+
+      <p class="text-gray-600 pt-4">
+        This item is at index {{ selectedItem.index }}
+      </p>
+    </aside>
+    }
   </div>
 </div>
