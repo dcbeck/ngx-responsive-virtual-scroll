@@ -1,11 +1,19 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed, effect, Signal, signal } from '@angular/core';
+import {
+  Component,
+  computed,
+  effect,
+  HostListener,
+  OnInit,
+  Signal,
+  signal,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 import { ResponsiveVirtualScrollModule } from 'ngx-responsive-virtual-scroll';
 import { debounceTime, Subject } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { RandomPhotoComponent } from "./random-photo.component";
+import { RandomPhotoComponent } from './random-photo.component';
 
 export type Item = {
   id: string;
@@ -20,13 +28,13 @@ export type Item = {
     ResponsiveVirtualScrollModule,
     CommonModule,
     FormsModule,
-    RandomPhotoComponent
-],
+    RandomPhotoComponent,
+  ],
   selector: 'ngx-responsive-virtual-scroll-demo',
   templateUrl: './app.component.html',
   styleUrl: './app.component.less',
 })
-export class AppComponent {
+export class AppComponent implements OnInit {
   selectedItem?: Item;
 
   numberOfItems = signal<number>(250);
@@ -72,6 +80,21 @@ export class AppComponent {
         this.heightChanged$.next();
       }
     });
+  }
+
+  isMobileView = false;
+  isSettingsMenuShownInMobile = false;
+  private mobileBreakpoint = 768 + 200; 
+
+  @HostListener('window:resize', ['$event'])
+  onResize(event: Event) {
+    const width = (event.target as Window).innerWidth;
+    this.isMobileView = width < this.mobileBreakpoint;
+  }
+
+  ngOnInit() {
+    // Initial check on component initialization
+    this.isMobileView = window.innerWidth < this.mobileBreakpoint;
   }
 
   selectItem(item: Item) {
