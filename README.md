@@ -23,7 +23,7 @@ It utilizes virtual scrolling techniques to only render the visible portion of t
 To install the NgxResponsiveVirtualScroll Library, you can use npm:
 
 ```bash
-npm install angular-virtual-scroll-grid
+npm install ngx-responsive-virtual-scroll
 ```
 
 ## Usage
