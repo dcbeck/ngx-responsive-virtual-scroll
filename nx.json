@@ -27,6 +27,9 @@
       "cache": true,
       "dependsOn": ["^build"],
       "inputs": ["production", "^production"]
+    },
+    "e2e-ci--**/*": {
+      "dependsOn": ["^demo:build"]
     }
   },
   "plugins": [
@@ -64,5 +67,6 @@
     "@nx/angular:component": {
       "style": "css"
     }
-  }
+  },
+  "useLegacyCache": true
 }
