@@ -72,7 +72,7 @@ export class DemoStateService {
     const selectedIndex = this.extractInt(paramMap, 'selectedIndex');
     if (selectedIndex !== null) {
       const data = this.data();
-      if (selectedIndex > 0 && selectedIndex < data.length) {
+      if (selectedIndex >= 0 && selectedIndex < data.length) {
         this.selectedItem.set(data[selectedIndex]);
       } else {
         this.selectedItem.set(null);
@@ -82,42 +82,42 @@ export class DemoStateService {
     }
 
     const numberOfItems = this.extractInt(paramMap, 'numberOfItems');
-    if (numberOfItems !== null && numberOfItems > 0) {
+    if (numberOfItems !== null && numberOfItems >= 0) {
       this.numberOfItems.set(numberOfItems);
     } else {
       this.numberOfItems.set(500);
     }
 
     const maxItemsPerRow = this.extractInt(paramMap, 'maxItemsPerRow');
-    if (maxItemsPerRow !== null && maxItemsPerRow > 0) {
+    if (maxItemsPerRow !== null && maxItemsPerRow >= 0) {
       this.maxItemsPerRow.set(maxItemsPerRow);
     } else {
       this.maxItemsPerRow.set(6);
     }
 
     const itemWidth = this.extractInt(paramMap, 'itemWidth');
-    if (itemWidth !== null && itemWidth > 0) {
+    if (itemWidth !== null && itemWidth >= 0) {
       this.itemWidth.set(itemWidth);
     } else {
       this.itemWidth.set(300);
     }
 
     const rowHeight = this.extractInt(paramMap, 'rowHeight');
-    if (rowHeight !== null && rowHeight > 0) {
+    if (rowHeight !== null && rowHeight >= 0) {
       this.rowHeight.set(rowHeight);
     } else {
       this.rowHeight.set(280);
     }
 
     const itemGap = this.extractInt(paramMap, 'itemGap');
-    if (itemGap !== null && itemGap > 0) {
+    if (itemGap !== null && itemGap >= 0) {
       this.itemGap.set(itemGap);
     } else {
       this.itemGap.set(24);
     }
 
     const scrollViewPadding = this.extractInt(paramMap, 'scrollViewPadding');
-    if (scrollViewPadding !== null && scrollViewPadding > 0) {
+    if (scrollViewPadding !== null && scrollViewPadding >= 0) {
       this.scrollViewPadding.set(scrollViewPadding);
     } else {
       this.scrollViewPadding.set(24);
