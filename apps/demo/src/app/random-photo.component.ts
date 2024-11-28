@@ -1,7 +1,7 @@
 import { Component, computed, input } from '@angular/core';
 
 @Component({
-  selector: 'ngx-responsive-virtual-scroll-random-photo',
+  selector: 'demo-random-photo',
   standalone: true,
   template: ` <img
     [src]="imageUrl()"

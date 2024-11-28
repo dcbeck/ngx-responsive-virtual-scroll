@@ -96,108 +96,72 @@
     }
 
     <div class="flex flex-row gap-1 w-full h-full flex-1 min-h-0 min-w-0">
-      @if (gridVisible) { @if (isGrid()) {
+      @if (state.itemWidth() >= 100 && state.rowHeight() >= 100) { @if
+      (state.isGridVisible()) { @if (state.isGrid()) {
       <ngx-responsive-virtual-scroll
         class="rn-scrollbar"
-        [items]="data()"
+        [items]="state.data()"
         [type]="'grid'"
-        [itemGap]="itemGap()"
-        [stretchItems]="stretchItems()"
-        [scrollViewPadding]="scrollViewPadding()"
+        [itemGap]="state.itemGap()"
+        [stretchItems]="state.stretchItems()"
+        [scrollViewPadding]="state.scrollViewPadding()"
         [autoScrollOnResize]="true"
-        [gridMaxColumns]="maxItemsPerRow()"
-        [gridItemWidth]="itemWidth()"
-        [rowHeight]="rowHeight()"
+        [gridMaxColumns]="state.maxItemsPerRow()"
+        [gridItemWidth]="state.itemWidth()"
+        [rowHeight]="state.rowHeight()"
         [renderAdditionalRows]="1"
       >
         <ng-template let-item let-row="row" let-column="column">
-          <div
-            class="bg-white rounded-lg max-w-full max-h-full flex flex-col shadow-md overflow-hidden transform transition hover:scale-105"
-            [ngClass]="{
-              'ring-4 ring-blue-500': item.index === selectedItem?.index
-            }"
-          >
-            <ngx-responsive-virtual-scroll-random-photo
-              class="w-full h-[30%]flex-shrink-0 overflow-hidden"
-              [seed]="item.id"
-            ></ngx-responsive-virtual-scroll-random-photo>
-            <div class="p-4 flex flex-col flex-1 w-full">
-              <h2
-                class="text-xl font-bold mb-2 text-gray-800 flex-shrink-0 truncate"
-              >
-                Card {{ item.index }}
-              </h2>
-              <p class="text-gray-600 mb-4 flex-1 line-clamp-2">
-                This item is in row {{ row }} and in column {{ column }}
-              </p>
-              <button
-                class="w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600 transition flex-shrink-0 truncate"
-                (click)="selectItem(item)"
-              >
-                Learn More
-              </button>
-            </div>
-          </div>
+          <demo-grid-item
+            type="grid"
+            [item]="item"
+            [row]="row"
+            [column]="column"
+            [isSelected]="item.index === state.selectedItem()?.index"
+            (isSelectedChange)="selectItem(item)"
+          ></demo-grid-item>
         </ng-template>
       </ngx-responsive-virtual-scroll>
       } @else {
       <ngx-responsive-virtual-scroll
         class="rn-scrollbar"
-        [items]="data()"
+        [items]="state.data()"
         [type]="'list'"
-        [itemGap]="itemGap()"
-        [stretchItems]="stretchItems()"
-        [scrollViewPadding]="scrollViewPadding()"
+        [itemGap]="state.itemGap()"
+        [stretchItems]="state.stretchItems()"
+        [scrollViewPadding]="state.scrollViewPadding()"
         [autoScrollOnResize]="true"
-        [rowHeight]="rowHeight()"
+        [rowHeight]="state.rowHeight()"
         [renderAdditionalRows]="1"
       >
         <ng-template let-item let-row="row" let-column="column">
-          <div
-            class="bg-white rounded-lg max-w-full max-h-full flex flex-col shadow-md overflow-hidden transform transition hover:scale-105 min-w-96"
-            [ngClass]="{
-              'ring-4 ring-blue-500': item.index === selectedItem?.index
-            }"
-          >
-            <img
-              [src]="item.imageUrl"
-              alt="Card Image"
-              class="w-full h-[30%] object-cover flex-shrink-0"
-              loading="lazy"
-            />
-            <div class="p-4 flex flex-col flex-1 w-full">
-              <h2
-                class="text-xl font-bold mb-2 text-gray-800 flex-shrink-0 truncate"
-              >
-                Card {{ item.index }}
-              </h2>
-              <p class="text-gray-600 mb-4 flex-1 line-clamp-2">
-                This item is in row {{ row }} and in column {{ column }}
-              </p>
-              <button
-                class="w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600 transition flex-shrink-0 truncate"
-                (click)="selectItem(item)"
-              >
-                Learn More
-              </button>
-            </div>
-          </div>
+          <demo-grid-item
+            type="list"
+            [item]="item"
+            [row]="row"
+            [column]="column"
+            [isSelected]="item.index === state.selectedItem()?.index"
+            (isSelectedChange)="selectItem(item)"
+          ></demo-grid-item>
         </ng-template>
       </ngx-responsive-virtual-scroll>
-      } }
+      } } } @else {
+      <div class="p-6 text-lg text-red-500">
+        Width of item must be greater than 100px and row height greater than
+        100px
+      </div>
+      }
     </div>
 
-    @if (selectedItem) {
-    <aside class="w-72 bg-white px-4 shadow-md">
+    @if (state.selectedItem(); as sItem) {
+    <aside class="max-w-36 sm:max-w-40 md:max-w-52 lg:max-w-64 xl:max-w-80 bg-white px-4 shadow-md">
       <div class="flex justify-between w-full items-center py-4">
-        <h2 class="text-xl font-bold">
-          Selected item {{ selectedItem.index }}
-        </h2>
+        <h2 class="text-xl font-bold truncate">Item {{ sItem.index }}</h2>
 
         <div
           role="button"
           class="text-black hover:text-blue-700 cursor-pointer rounded-full hover:bg-slate-200 h-7 w-7 items-center justify-center flex"
-          (click)="selectedItem = undefined"
+          (click)="state.selectedItem.set(null)"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -217,37 +181,35 @@
       </div>
 
       <div class="rounded-md shadow-md overflow-hidden">
-        <ngx-responsive-virtual-scroll-random-photo
+        <demo-random-photo
           class="w-full h-32 overflow-hidden"
-          [seed]="selectedItem.id"
-        ></ngx-responsive-virtual-scroll-random-photo>
+          [seed]="sItem.id"
+        ></demo-random-photo>
       </div>
 
-      <p class="text-gray-600 pt-4">
-        This item is at index {{ selectedItem.index }}
-      </p>
+      <p class="text-gray-600 pt-4">This item is at index {{ sItem.index }}</p>
     </aside>
     }
   </div>
 
   <ng-template #settingsSidebar>
     <aside
-      class="w-64 bg-white p-4 shadow-md max-h-full overflow-x-hidden overflow-y-scroll rn-scrollbar h-full"
+      class=" bg-white p-4 shadow-md max-h-full overflow-x-hidden overflow-y-scroll rn-scrollbar h-full"
     >
       <div class="pb-6">
         <label class="cursor-pointer items-center flex">
           <input
             type="checkbox"
             class="form-checkbox h-5 w-5 text-blue-600 rounded focus:ring-blue-500"
-            [ngModel]="isGrid()"
-            (ngModelChange)="isGrid.set($event)"
+            [ngModel]="state.isGrid()"
+            (ngModelChange)="state.isGrid.set($event)"
           />
           <span class="ml-2 text-gray-700 select-none">Toggle grid/list</span>
         </label>
       </div>
 
       <h3 class="text-lg font-semibold mb-4">
-        {{ isGrid() ? 'Grid' : 'List' }} Settings
+        {{ state.isGrid() ? 'Grid' : 'List' }} Settings
       </h3>
 
       <div class="flex flex-col w-full gap-4">
@@ -259,15 +221,15 @@
           <input
             type="number"
             id="quantity"
-            [ngModel]="numberOfItems()"
-            (ngModelChange)="numberOfItems.set($event)"
+            [ngModel]="state.numberOfItems()"
+            (ngModelChange)="state.numberOfItems.set($event)"
             min="0"
             value="0"
             class="w-full pl-8 pr-8 py-2 border rounded-md text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
 
-        @if (isGrid()) {
+        @if (state.isGrid()) {
         <div>
           <label for="maxItemsPerRow" class="block text-gray-700 mb-2"
             >Max items per row</label
@@ -276,8 +238,8 @@
           <input
             type="number"
             id="maxItemsPerRow"
-            [ngModel]="maxItemsPerRow()"
-            (ngModelChange)="maxItemsPerRow.set($event)"
+            [ngModel]="state.maxItemsPerRow()"
+            (ngModelChange)="state.maxItemsPerRow.set($event)"
             min="0"
             value="0"
             class="w-full pl-8 pr-8 py-2 border rounded-md text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -286,14 +248,15 @@
 
         <div>
           <label for="itemWidth" class="block text-gray-700 mb-2"
-            >Width of item</label
+            >{{ state.stretchItems() ? 'Minimum width' : 'Width' }} of
+            item</label
           >
 
           <input
             type="number"
             id="itemWidth"
-            [ngModel]="itemWidth()"
-            (ngModelChange)="itemWidth.set($event)"
+            [ngModel]="state.itemWidth()"
+            (ngModelChange)="state.itemWidth.set($event)"
             min="0"
             value="0"
             class="w-full pl-8 pr-8 py-2 border rounded-md text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -307,8 +270,8 @@
             <input
               type="checkbox"
               class="form-checkbox h-5 w-5 text-blue-600 rounded focus:ring-blue-500"
-              [ngModel]="stretchItems()"
-              (ngModelChange)="stretchItems.set($event)"
+              [ngModel]="state.stretchItems()"
+              (ngModelChange)="state.stretchItems.set($event)"
             />
             <span class="ml-2 text-gray-700 select-none"
               >Stretch items to full width</span
@@ -324,8 +287,8 @@
           <input
             type="number"
             id="itemHeight"
-            [ngModel]="rowHeight()"
-            (ngModelChange)="rowHeight.set($event)"
+            [ngModel]="state.rowHeight()"
+            (ngModelChange)="state.rowHeight.set($event)"
             min="0"
             value="0"
             class="w-full pl-8 pr-8 py-2 border rounded-md text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -338,8 +301,8 @@
           <input
             type="number"
             id="itemGap"
-            [ngModel]="itemGap()"
-            (ngModelChange)="itemGap.set($event)"
+            [ngModel]="state.itemGap()"
+            (ngModelChange)="state.itemGap.set($event)"
             min="0"
             value="0"
             class="w-full pl-8 pr-8 py-2 border rounded-md text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -354,8 +317,8 @@
           <input
             type="number"
             id="scrollViewPadding"
-            [ngModel]="scrollViewPadding()"
-            (ngModelChange)="scrollViewPadding.set($event)"
+            [ngModel]="state.scrollViewPadding()"
+            (ngModelChange)="state.scrollViewPadding.set($event)"
             min="0"
             value="0"
             class="w-full pl-8 pr-8 py-2 border rounded-md text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
