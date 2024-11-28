@@ -35,7 +35,6 @@ export class DemoStateService {
   isGridVisible = signal<boolean>(true);
   gridData$ = new BehaviorSubject<string>('');
 
-
   constructor(private readonly router: Router) {
     effect(
       () => {
@@ -50,11 +49,10 @@ export class DemoStateService {
     );
 
     effect(() => {
-
-        console.log()
+      const selectedItem = this.selectedItem();
       this.router.navigate(['/'], {
         queryParams: {
-          selectedIndex: this.selectedItem()?.index || -1,
+          selectedIndex: selectedItem ? selectedItem.index : -1,
           numberOfItems: this.numberOfItems(),
           maxItemsPerRow: this.maxItemsPerRow(),
           itemWidth: this.itemWidth(),
@@ -69,6 +67,8 @@ export class DemoStateService {
   }
 
   updateDataByParmMap(paramMap: ParamMap) {
+    if (paramMap.keys.length === 0) return;
+
     const selectedIndex = this.extractInt(paramMap, 'selectedIndex');
     if (selectedIndex !== null) {
       const data = this.data();

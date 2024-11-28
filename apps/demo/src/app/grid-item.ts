@@ -74,13 +74,11 @@ export class GridItemComponent {
       }
       this.hostClasses = classes.join(' ');
       cdr.markForCheck();
-      console.log(this.hostClasses);
     });
   }
 
   selectItem() {
     if (this.isSelected() === false) {
-      console.log('shees', this.isSelected());
       this.isSelectedChange.emit(true);
     }
   }

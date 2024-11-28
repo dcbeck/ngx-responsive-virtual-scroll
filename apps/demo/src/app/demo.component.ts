@@ -80,8 +80,6 @@ export class DemoComponent implements OnInit {
   }
 
   selectItem(item: ScrollGridItem) {
-    console.log('hello', item);
-
     this.state.selectedItem.set(item);
     this.cdr.markForCheck();
   }
