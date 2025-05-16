@@ -10,11 +10,12 @@ import {
 } from '@angular/core';
 import { ScrollGridItem } from './demo.component';
 import { RandomPhotoComponent } from './random-photo.component';
+import { StarIconComponent } from './star-icon.component';
 
 @Component({
   selector: 'demo-grid-item',
   standalone: true,
-  imports: [CommonModule, RandomPhotoComponent],
+  imports: [CommonModule, RandomPhotoComponent, StarIconComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: [
     `
@@ -35,8 +36,14 @@ import { RandomPhotoComponent } from './random-photo.component';
       [seed]="item().id"
     ></demo-random-photo>
     <div class="p-4 flex flex-col flex-1 w-full">
-      <h2 class="text-xl font-bold mb-2 text-gray-800 flex-shrink-0 truncate">
+      <h2
+        class="text-xl font-bold mb-2 text-gray-800 flex-shrink-0 truncate flex w-full gap-2 items-center"
+      >
         Card {{ item().index }}
+
+        @if (item().isFavored; as isFavored) {
+        <demo-star-icon [isStarred]="isFavored"></demo-star-icon>
+        }
       </h2>
       <p class="text-gray-600 mb-4 flex-1 line-clamp-2">
         This item is in row {{ row() }} and in column {{ column() }}
@@ -73,6 +80,7 @@ export class GridItemComponent {
         classes.push('listItem');
       }
       this.hostClasses = classes.join(' ');
+
       cdr.markForCheck();
     });
   }

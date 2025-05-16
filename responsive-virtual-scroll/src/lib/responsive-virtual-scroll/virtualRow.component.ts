@@ -184,6 +184,7 @@ export class VirtualRowComponent implements OnDestroy {
     const viewRef = this._viewContainer.get(
       column
     ) as EmbeddedViewRef<ScrollItem>;
+
     viewRef.context.$implicit = context;
     return viewRef;
   }
@@ -199,6 +200,15 @@ export class VirtualRowComponent implements OnDestroy {
       viewRef.context.row = row;
     }
     this._cdr.markForCheck();
+  }
+
+  getAllContextOfRow() {
+    const data: any[] = [];
+    for (let c = 0; c < this._viewContainer.length; c++) {
+      const viewRef = this._viewContainer.get(c) as EmbeddedViewRef<ScrollItem>;
+      data.push(viewRef.context.$implicit);
+    }
+    return data;
   }
 
   ngOnDestroy(): void {

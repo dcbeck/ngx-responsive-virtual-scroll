@@ -14,10 +14,12 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { GridItemComponent } from './grid-item';
 import { RandomPhotoComponent } from './random-photo.component';
 import { DemoStateService } from './demo.state.service';
+import { StarIconComponent } from './star-icon.component';
 
 export type ScrollGridItem = {
   id: string;
   index: number;
+  isFavored: boolean;
 };
 
 @Component({
@@ -29,6 +31,7 @@ export type ScrollGridItem = {
     CommonModule,
     RandomPhotoComponent,
     FormsModule,
+    StarIconComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'demo-app',
@@ -69,6 +72,10 @@ export class DemoComponent implements OnInit {
     this.setMobileView();
   }
 
+  setFavored(favored: boolean, itemId: string) {
+    this.state.setFavored(favored, itemId);
+  }
+
   setMobileView(event?: Event) {
     if (event) {
       const width = (event.target as Window).innerWidth;
@@ -83,4 +90,6 @@ export class DemoComponent implements OnInit {
     this.state.selectedItem.set(item);
     this.cdr.markForCheck();
   }
+
+  trackByFn = (item: ScrollGridItem) => item.id;
 }

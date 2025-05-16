@@ -113,7 +113,7 @@ export type TScrollGridRow<T> = { rowId: number; items: T[] };
       }
     `,
   ],
-  template: ` <div
+  template: `<div
     class="ngx-responsive-virtual-scroll-container"
     [style.width]="stretchItems ? '100%' : width"
     [style.height.px]="height"
@@ -128,7 +128,23 @@ export class ResponsiveVirtualScrollComponent<T> implements OnInit, OnDestroy {
     if (isObservable(itemValues)) {
       this.itemStreamChanged$.next(itemValues);
     } else {
-      this.itemStreamChanged$.next(new BehaviorSubject(itemValues));
+      if (this.trackByFn$.value) {
+        const hash = this.createSimpleHash(itemValues, this.trackByFn$.value);
+        if (hash !== this.previousTrackByHash) {
+          this.itemSubject$.complete();
+          this.itemSubject$ = new BehaviorSubject(itemValues);
+          this.itemStreamChanged$.next(this.itemSubject$);
+        } else {
+          this.itemSubject$.next(itemValues);
+          this.forceRerender$.next(hash);
+          this.rerenderScrollView();
+        }
+        this.previousTrackByHash = hash;
+      } else {
+        this.itemSubject$.complete();
+        this.itemSubject$ = new BehaviorSubject(itemValues);
+        this.itemStreamChanged$.next(this.itemSubject$);
+      }
     }
   }
 
@@ -138,6 +154,14 @@ export class ResponsiveVirtualScrollComponent<T> implements OnInit, OnDestroy {
       this.actualColumns$.next(1);
     }
   }
+
+  @Input() set trackBy(trackByFn: (item: T) => string | boolean | number) {
+    this.trackByFn$.next(trackByFn);
+  }
+
+  previousTrackByHash = 0;
+  itemSubject$ = new BehaviorSubject<T[]>([]);
+  forceRerender$ = new Subject<number>();
 
   /**
    * stretches items to fill up full container with.
@@ -269,6 +293,10 @@ export class ResponsiveVirtualScrollComponent<T> implements OnInit, OnDestroy {
 
   private itemStreamChanged$ = new ReplaySubject<Observable<T[]>>(1);
 
+  private trackByFn$ = new BehaviorSubject<
+    undefined | ((item: T) => string | boolean | number)
+  >(undefined);
+
   vsOptions: Observable<IVirtualScrollOptions> = combineLatest({
     itemWidth: this.itemWidth$,
     itemHeight: this.itemHeight$,
@@ -306,16 +334,58 @@ export class ResponsiveVirtualScrollComponent<T> implements OnInit, OnDestroy {
   };
 
   ngOnInit() {
+    combineLatest({
+      itemStream: this.itemStreamChanged$,
+      trackByFn: this.trackByFn$,
+    })
+      .pipe(takeUntil(this.unsubscribe$), take(1))
+      .subscribe(({ itemStream, trackByFn }) => {
+        if (itemStream instanceof BehaviorSubject && trackByFn) {
+          const hash = this.createSimpleHash(
+            (itemStream as BehaviorSubject<T[]>).value,
+            trackByFn
+          );
+          this.previousTrackByHash = hash;
+        }
+      });
+
     this.itemStreamChanged$
       .pipe(takeUntil(this.unsubscribe$))
       .subscribe((itemStream) => {
         this.initialize(itemStream);
-
         this.rerenderScrollView();
       });
   }
 
+  private createSimpleHash(
+    values: T[],
+    trackByFn: (item: T) => string | boolean | number
+  ): number {
+    let hash = 0,
+      i,
+      chr;
+    for (let v = 0; v < values.length; v++) {
+      const data = trackByFn(values[v]);
+      let str = '';
+      if (typeof data === 'string') {
+        str = data;
+      } else if (typeof data === 'boolean') {
+        str = data ? '1' : '0';
+      } else {
+        str = `${data}`;
+      }
+      for (i = 0; i < str.length; i++) {
+        chr = str.charCodeAt(i);
+        hash = (hash << 5) - hash + chr;
+        hash |= 0; // Convert to 32bit integer
+      }
+    }
+
+    return hash;
+  }
+
   initialize(dataObservable: Observable<T[]>) {
+    console.log('run intialize');
     //reset all
     if (this._subs.length > 0) {
       this._subs.forEach((sub) => sub.unsubscribe());
@@ -361,10 +431,19 @@ export class ResponsiveVirtualScrollComponent<T> implements OnInit, OnDestroy {
 
     const initData: any[] = [];
 
-    const data$ = connectable(dataObservable.pipe(startWith(initData)), {
-      connector: () => new Subject(),
-      resetOnDisconnect: false,
-    });
+    let data$ = undefined;
+
+    if (dataObservable instanceof BehaviorSubject && this.trackByFn$.value) {
+      data$ = connectable(dataObservable.pipe(startWith(initData)), {
+        connector: () => new Subject(),
+        resetOnDisconnect: false,
+      });
+    } else {
+      data$ = connectable(dataObservable.pipe(startWith(initData)), {
+        connector: () => new Subject(),
+        resetOnDisconnect: false,
+      });
+    }
 
     const dataMeta$ = data$.pipe(
       map((data) => [new Date().getTime(), data.length])
@@ -456,8 +535,11 @@ export class ResponsiveVirtualScrollComponent<T> implements OnInit, OnDestroy {
 
     const dScrollWin$ = scrollWin$.pipe(pairwise());
 
-    const renderCmdObs$ = dScrollWin$.pipe(
-      concatMap(([prevWin, curWin]) => {
+    const renderCmdObs$ = combineLatest({
+      dScrollWin: dScrollWin$,
+    }).pipe(
+      concatMap(({ dScrollWin }) => {
+        const [prevWin, curWin] = dScrollWin;
         let rowsDiffCmd$ = of(new NoopCmd());
         let rowsUpdateCmd$ = of(new NoopCmd());
 
@@ -833,29 +915,97 @@ export class ResponsiveVirtualScrollComponent<T> implements OnInit, OnDestroy {
       })
     );
 
-    const scanFunc = (
-      state: IVirtualScrollState,
-      changeFn: (state: IVirtualScrollState) => IVirtualScrollState
-    ): IVirtualScrollState => changeFn(state);
+    let main$: Observable<IVirtualScrollState> | undefined = undefined;
 
-    // Update store
-    const main$: Observable<IVirtualScrollState> = merge(
-      createRowFunc$,
-      removeRowFunc$,
-      shiftRowFunc$,
-      createItemFunc$,
-      removeItemFunc$,
-      updateItemFunc$,
-      updateScrollWinFunc$,
-      setScrollTopFunc$
-    ).pipe(
-      scan(scanFunc, {
-        measurement: null,
-        scrollWindow: null,
-        rows: {},
-        needsCheck: false,
-      })
-    );
+    if (dataObservable instanceof BehaviorSubject) {
+      const forceUpdateFunc$ = this.forceRerender$.pipe(
+        withLatestFrom(data$),
+        map(([_, data]) => (state: IVirtualScrollState) => {
+          const win = state.scrollWindow;
+
+          if (win) {
+            const trackByFn = this.trackByFn$.value;
+            if (trackByFn) {
+              Object.values(state.rows as any).forEach((rowComp, rowIndex) => {
+                if ((rowComp as any).instance) {
+                  const rowComponent = (rowComp as any)
+                    .instance as VirtualRowComponent;
+
+                  const contexts = rowComponent.getAllContextOfRow() as T[];
+                  for (
+                    let columnIndex = 0;
+                    columnIndex < contexts.length;
+                    columnIndex++
+                  ) {
+                    const context = contexts[columnIndex];
+
+                    const searchVal = trackByFn(context);
+                    const dataIndex = (data as T[]).findIndex(
+                      (t) => searchVal === trackByFn(t)
+                    );
+                    if (dataIndex !== -1) {
+                      rowComponent.updateItem(columnIndex, data[dataIndex]);
+                    }
+                  }
+                }
+              });
+            }
+          }
+          console.log(data.length);
+          state.needsCheck = false;
+          return state;
+        })
+      );
+
+      const scanFunc = (
+        state: IVirtualScrollState,
+        changeFn: (state: IVirtualScrollState) => IVirtualScrollState
+      ): IVirtualScrollState => changeFn(state);
+
+      // Update store
+      main$ = merge(
+        createRowFunc$,
+        removeRowFunc$,
+        shiftRowFunc$,
+        createItemFunc$,
+        removeItemFunc$,
+        updateItemFunc$,
+        updateScrollWinFunc$,
+        setScrollTopFunc$,
+        forceUpdateFunc$
+      ).pipe(
+        scan(scanFunc, {
+          measurement: null,
+          scrollWindow: null,
+          rows: {},
+          needsCheck: false,
+        })
+      );
+    } else {
+      const scanFunc = (
+        state: IVirtualScrollState,
+        changeFn: (state: IVirtualScrollState) => IVirtualScrollState
+      ): IVirtualScrollState => changeFn(state);
+
+      // Update store
+      main$ = merge(
+        createRowFunc$,
+        removeRowFunc$,
+        shiftRowFunc$,
+        createItemFunc$,
+        removeItemFunc$,
+        updateItemFunc$,
+        updateScrollWinFunc$,
+        setScrollTopFunc$
+      ).pipe(
+        scan(scanFunc, {
+          measurement: null,
+          scrollWindow: null,
+          rows: {},
+          needsCheck: false,
+        })
+      );
+    }
 
     this._subs.push(
       scroll$
@@ -935,5 +1085,8 @@ export class ResponsiveVirtualScrollComponent<T> implements OnInit, OnDestroy {
     this.type$.complete();
     this.itemGap$.complete();
     this.padding$.complete();
+    this.trackByFn$.complete();
+    this.itemSubject$.complete();
+    this.forceRerender$.complete();
   }
 }

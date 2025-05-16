@@ -110,6 +110,7 @@
         [gridItemWidth]="state.itemWidth()"
         [rowHeight]="state.rowHeight()"
         [renderAdditionalRows]="1"
+        [trackBy]="trackByFn"
       >
         <ng-template let-item let-row="row" let-column="column">
           <demo-grid-item
@@ -133,6 +134,7 @@
         [autoScrollOnResize]="true"
         [rowHeight]="state.rowHeight()"
         [renderAdditionalRows]="1"
+        [trackBy]="trackByFn"
       >
         <ng-template let-item let-row="row" let-column="column">
           <demo-grid-item
@@ -154,7 +156,9 @@
     </div>
 
     @if (state.selectedItem(); as sItem) {
-    <aside class="max-w-36 sm:max-w-40 md:max-w-52 lg:max-w-64 xl:max-w-80 bg-white px-4 shadow-md">
+    <aside
+      class="max-w-36 sm:max-w-40 md:max-w-52 lg:max-w-64 xl:max-w-80 bg-white px-4 shadow-md"
+    >
       <div class="flex justify-between w-full items-center py-4">
         <h2 class="text-xl font-bold truncate">Item {{ sItem.index }}</h2>
 
@@ -188,13 +192,22 @@
       </div>
 
       <p class="text-gray-600 pt-4">This item is at index {{ sItem.index }}</p>
+
+      {{ sItem.isFavored }}
+
+      <demo-star-icon
+        [isStarred]="sItem.isFavored"
+        (isStarredChange)="setFavored($event, sItem.id)"
+        [enabled]="true"
+        [showText]="true"
+      ></demo-star-icon>
     </aside>
     }
   </div>
 
   <ng-template #settingsSidebar>
     <aside
-      class=" bg-white p-4 shadow-md max-h-full overflow-x-hidden overflow-y-scroll rn-scrollbar h-full"
+      class="bg-white p-4 shadow-md max-h-full overflow-x-hidden overflow-y-scroll rn-scrollbar h-full"
     >
       <div class="pb-6">
         <label class="cursor-pointer items-center flex">

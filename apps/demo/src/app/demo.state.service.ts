@@ -26,12 +26,21 @@ export class DemoStateService {
   stretchItems = signal<boolean>(false);
   isGrid = signal<boolean>(true);
 
-  data: Signal<ScrollGridItem[]> = computed(() =>
-    Array.from({ length: this.numberOfItems() }).map((_, i) => ({
-      index: i,
-      id: `${i}_data_1`,
-    }))
-  );
+  data: Signal<ScrollGridItem[]> = computed(() => {
+    const favoredItemIdSet = this.favoredItemIds();
+    return Array.from({ length: this.numberOfItems() }).map((_, i) => {
+      const id = `${i}_data_1`;
+
+      return {
+        index: i,
+        id: `${i}_data_1`,
+        isFavored: favoredItemIdSet.has(id),
+      };
+    });
+  });
+
+  private favoredItemIds = signal(new Set<string>());
+
   isGridVisible = signal<boolean>(true);
   gridData$ = new BehaviorSubject<string>('');
 
@@ -64,6 +73,29 @@ export class DemoStateService {
         },
       });
     });
+  }
+
+  setFavored(favored: boolean, itemId: string) {
+    if (favored) {
+      this.favoredItemIds.update((ids) => {
+        const idsCopy = new Set([...ids]);
+        idsCopy.add(itemId);
+        return idsCopy;
+      });
+    } else {
+      this.favoredItemIds.update((ids) => {
+        const idsCopy = new Set([...ids]);
+        if (idsCopy.has(itemId)) {
+          idsCopy.delete(itemId);
+        }
+        return idsCopy;
+      });
+    }
+
+    const selectedIndex = this.selectedItem()?.index;
+    if (selectedIndex !== undefined) {
+      this.selectedItem.set(this.data()[selectedIndex]);
+    }
   }
 
   updateDataByParmMap(paramMap: ParamMap) {
