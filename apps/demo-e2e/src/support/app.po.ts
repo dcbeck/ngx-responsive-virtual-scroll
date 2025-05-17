@@ -67,6 +67,12 @@ export const selectGridItem = (index: number) => {
   return cy.get('#grid-item-learn-more-btn-' + index).click();
 };
 
+export const shouldHaveNumberOfColumns = (cols: number) => {
+  cy.get('ngx-responsive-virtual-scroll-row:first')
+    .find('demo-grid-item')
+    .should('have.length', cols);
+};
+
 export const gridItemsShouldExistWithinIndexRange = (
   fromIndex: number,
   toIndex: number
