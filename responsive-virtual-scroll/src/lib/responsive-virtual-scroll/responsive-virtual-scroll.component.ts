@@ -918,6 +918,7 @@ export class ResponsiveVirtualScrollComponent<T> implements OnInit, OnDestroy {
     if (dataObservable instanceof BehaviorSubject) {
       const silentUpdateFunc$ = this.silentValueUpdates$.pipe(
         withLatestFrom(data$),
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         map(([_, data]) => (state: IVirtualScrollState) => {
           const win = state.scrollWindow;
           const trackByFn = this.trackByFn$.value;

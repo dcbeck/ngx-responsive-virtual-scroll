@@ -15,12 +15,7 @@ import { GridItemComponent } from './grid-item';
 import { RandomPhotoComponent } from './random-photo.component';
 import { DemoStateService } from './demo.state.service';
 import { StarIconComponent } from './star-icon.component';
-
-export type ScrollGridItem = {
-  id: string;
-  index: number;
-  isFavored: boolean;
-};
+import { ScrollGridItem } from './types';
 
 @Component({
   standalone: true,

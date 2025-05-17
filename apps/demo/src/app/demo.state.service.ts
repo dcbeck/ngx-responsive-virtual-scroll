@@ -1,18 +1,8 @@
 import { computed, effect, Injectable, Signal, signal } from '@angular/core';
-import { ScrollGridItem } from './demo.component';
+
 import { BehaviorSubject } from 'rxjs';
 import { ParamMap, Router } from '@angular/router';
-
-export type StateKey =
-  | 'selectedIndex'
-  | 'numberOfItems'
-  | 'maxItemsPerRow'
-  | 'itemWidth'
-  | 'rowHeight'
-  | 'itemGap'
-  | 'scrollViewPadding'
-  | 'stretchItems'
-  | 'isGrid';
+import { ScrollGridItem, StateKey } from './types';
 
 @Injectable({ providedIn: 'root' })
 export class DemoStateService {

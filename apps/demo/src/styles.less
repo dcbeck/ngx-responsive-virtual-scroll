@@ -2,60 +2,63 @@
 @tailwind components;
 @tailwind utilities;
 
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 /* You can add global styles to this file, and also import other style files */
 .rn-scrollbar {
-    &::-webkit-scrollbar {
-      width: 10px;
-    }
-  
-    &::-webkit-scrollbar-track {
-      background: transparent;
-      border-radius: 5px;
-    }
-  
+  &::-webkit-scrollbar {
+    width: 10px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: transparent;
+    border-radius: 5px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    border: 2px solid rgba(0, 0, 0, 0);
+    border-radius: 5px;
+  }
+}
+
+.browserScrollbarMixin(@scrollbar-thumb-color) {
+  .rn-scrollbar {
     &::-webkit-scrollbar-thumb {
-      border: 2px solid rgba(0, 0, 0, 0);
-      border-radius: 5px;
+      box-shadow: inset 0 0 10px 10px @scrollbar-thumb-color !important;
     }
   }
-  
-  .browserScrollbarMixin(@scrollbar-thumb-color) {
+
+  @supports (scrollbar-color: red blue) {
+    // Firefox scrollbar
     .rn-scrollbar {
-      &::-webkit-scrollbar-thumb {
-        box-shadow: inset 0 0 10px 10px @scrollbar-thumb-color !important;
-      }
-    }
-  
-    @supports (scrollbar-color: red blue) {
-      // Firefox scrollbar
-      .rn-scrollbar {
-        scrollbar-color: @scrollbar-thumb-color rgba(0, 0, 0, 0) !important;
-        scrollbar-width: thin !important;
-      }
+      scrollbar-color: @scrollbar-thumb-color rgba(0, 0, 0, 0) !important;
+      scrollbar-width: thin !important;
     }
   }
-  
-  html:not(&.dark) {
-    .browserScrollbarMixin(rgb(179, 182, 186));
+}
+
+html:not(&.dark) {
+  .browserScrollbarMixin(rgb(179, 182, 186));
+}
+
+html.dark {
+  .browserScrollbarMixin( rgb(74, 87, 105));
+}
+
+@supports (scrollbar-gutter: stable) {
+  .rn-stable-gutters {
+    scrollbar-gutter: stable !important;
   }
-  
-  html.dark {
-    .browserScrollbarMixin( rgb(74, 87, 105));
+
+  //simulates margin based on scrollbar gutter width.
+  //used to align headers correctly with scrollbar content
+  .rn-scrollbar-indent-m {
+    margin-right: 11px !important;
   }
-  
-  @supports (scrollbar-gutter: stable) {
-    .rn-stable-gutters {
-      scrollbar-gutter: stable !important;
-    }
-  
-    //simulates margin based on scrollbar gutter width.
-    //used to align headers correctly with scrollbar content
-    .rn-scrollbar-indent-m {
-      margin-right: 11px !important;
-    }
-  
-    .rn-scrollbar-indent-p {
-      padding-right: 11px !important;
-    }
+
+  .rn-scrollbar-indent-p {
+    padding-right: 11px !important;
   }
-  
+}

@@ -15,6 +15,7 @@
     "skipDefaultLibCheck": true,
     "baseUrl": ".",
     "paths": {
+      "@demo": ["apps/demo/src/index.ts"],
       "ngx-responsive-virtual-scroll": [
         "responsive-virtual-scroll/src/index.ts"
       ]

@@ -9,9 +9,9 @@ import {
   input,
   output,
 } from '@angular/core';
-import { ScrollGridItem } from './demo.component';
 import { RandomPhotoComponent } from './random-photo.component';
 import { StarIconComponent } from './star-icon.component';
+import { ScrollGridItem } from './types';
 
 @Component({
   selector: 'demo-grid-item',
