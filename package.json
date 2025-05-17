@@ -5,7 +5,7 @@
   "license": "MIT",
   "scripts": {
     "demo": "nx run demo:serve",
-    "demo:e2e": "nx e2e demo-e2e",
+    "e2e": "nx e2e demo-e2e",
     "build": "nx run responsive-virtual-scroll:build:production",
     "build:demo": "nx run demo:build:production -- --base-href='./'"
   },

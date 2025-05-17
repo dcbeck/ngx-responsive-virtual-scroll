@@ -32,7 +32,10 @@ export const visitState = (options?: {
   if (numItems > 0) {
     cy.get('#grid-item-learn-more-btn-0').contains('Learn More');
   }
-  cy.get('#quantity').should('have.value', `${numItems}`);
+
+  if (Cypress.$('input').length !== 0) {
+    cy.get('#quantity').should('have.value', `${numItems}`);
+  }
 };
 
 export const scrollToVirtualScrollViewBottom = () =>
@@ -48,6 +51,22 @@ export const getGridItemHeading = (index: number) => {
   return cy.get('#grid-item-heading-' + index);
 };
 
+export const gridItemWithIndexShouldBeSelected = (index: number) => {
+  getGridItem(index).invoke('attr', 'data-selected').should('eq', 'true');
+};
+
+export const gridItemWithIndexShouldNotBeSelected = (index: number) => {
+  getGridItem(index).invoke('attr', 'data-selected').should('eq', 'false');
+};
+
+export const getGridItem = (index: number) => {
+  return cy.get('#grid-item-' + index);
+};
+
+export const selectGridItem = (index: number) => {
+  return cy.get('#grid-item-learn-more-btn-' + index).click();
+};
+
 export const gridItemsShouldExistWithinIndexRange = (
   fromIndex: number,
   toIndex: number
@@ -61,4 +80,31 @@ export const gridItemsShouldExistWithinIndexRange = (
     getGridItemHeading(toIndex + a).should('not.exist');
     getGridItemHeading(fromIndex - a).should('not.exist');
   }
+};
+
+export const closeInspector = () => {
+  cy.get('#inspector-close-button').click();
+};
+
+export const inspectorShouldBeOpenWithItemAtIndex = (index: number) => {
+  cy.get('#inspector-heading').contains(index);
+};
+
+export const toggleStarWidthIndex = (index: number) => {
+  selectGridItem(index);
+  gridItemWithIndexShouldBeSelected(index);
+  inspectorShouldBeOpenWithItemAtIndex(index);
+  cy.get('#inspector-star-button').click();
+};
+
+export const gridItemWithIndexShouldHaveActiveStar = (index: number) => {
+  cy.get('#grid-item-star-' + index)
+    .invoke('attr', 'data-starred')
+    .should('eq', 'true');
+};
+
+export const gridItemWithIndexShouldHaveNoStar = (index: number) => {
+  cy.get('#grid-item-star-' + index)
+    .invoke('attr', 'data-starred')
+    .should('eq', 'false');
 };

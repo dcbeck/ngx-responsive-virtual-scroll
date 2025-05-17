@@ -44,16 +44,16 @@ import { ScrollGridItem } from './types';
         >
           Card {{ item().index }}
         </h2>
-        @if (item().isFavored; as isFavored) {
 
         <div
           class="flex-shrink-0"
           [id]="starId()"
-          [attr.data-starred]="isFavored"
+          [attr.data-starred]="item().isFavored"
         >
+          @if (item().isFavored; as isFavored) {
           <demo-star-icon [isStarred]="isFavored"></demo-star-icon>
+          }
         </div>
-        }
       </div>
 
       <p class="text-gray-600 mb-4 flex-1 line-clamp-2">

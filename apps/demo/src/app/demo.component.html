@@ -118,6 +118,8 @@
             [item]="item"
             [row]="row"
             [column]="column"
+            [id]="'grid-item-' + item.index"
+            [attr.data-selected]="item.index === state.selectedItem()?.index"
             [isSelected]="item.index === state.selectedItem()?.index"
             (isSelectedChange)="selectItem(item)"
           ></demo-grid-item>
@@ -141,7 +143,9 @@
             type="list"
             [item]="item"
             [row]="row"
+            [id]="'grid-item-' + item.index"
             [column]="column"
+            [attr.data-selected]="item.index === state.selectedItem()?.index"
             [isSelected]="item.index === state.selectedItem()?.index"
             (isSelectedChange)="selectItem(item)"
           ></demo-grid-item>
