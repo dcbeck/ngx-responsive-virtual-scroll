@@ -206,7 +206,9 @@ export class VirtualRowComponent implements OnDestroy {
     const data: any[] = [];
     for (let c = 0; c < this._viewContainer.length; c++) {
       const viewRef = this._viewContainer.get(c) as EmbeddedViewRef<ScrollItem>;
-      data.push(viewRef.context.$implicit);
+      if (viewRef?.context?.$implicit) {
+        data.push(viewRef.context.$implicit);
+      }
     }
     return data;
   }

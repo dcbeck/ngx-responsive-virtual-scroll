@@ -131,19 +131,13 @@ export class ResponsiveVirtualScrollComponent<T> implements OnInit, OnDestroy {
       if (this.trackByFn$.value) {
         const hash = this.createSimpleHash(itemValues, this.trackByFn$.value);
         if (hash !== this.previousTrackByHash) {
-          this.itemSubject$.complete();
-          this.itemSubject$ = new BehaviorSubject(itemValues);
-          this.itemStreamChanged$.next(this.itemSubject$);
+          this.renewInitialization(itemValues);
         } else {
-          this.itemSubject$.next(itemValues);
-          this.forceRerender$.next(hash);
-          this.rerenderScrollView();
+          this.executeSilentValueUpdates(itemValues, hash);
         }
         this.previousTrackByHash = hash;
       } else {
-        this.itemSubject$.complete();
-        this.itemSubject$ = new BehaviorSubject(itemValues);
-        this.itemStreamChanged$.next(this.itemSubject$);
+        this.renewInitialization(itemValues);
       }
     }
   }
@@ -161,7 +155,7 @@ export class ResponsiveVirtualScrollComponent<T> implements OnInit, OnDestroy {
 
   previousTrackByHash = 0;
   itemSubject$ = new BehaviorSubject<T[]>([]);
-  forceRerender$ = new Subject<number>();
+  silentValueUpdates$ = new Subject<number>();
 
   /**
    * stretches items to fill up full container with.
@@ -320,6 +314,18 @@ export class ResponsiveVirtualScrollComponent<T> implements OnInit, OnDestroy {
     this.resizeObserver.observe(this._elem.nativeElement);
   }
 
+  private renewInitialization(itemValues: T[]) {
+    this.itemSubject$.complete();
+    this.itemSubject$ = new BehaviorSubject(itemValues);
+    this.itemStreamChanged$.next(this.itemSubject$);
+  }
+
+  private executeSilentValueUpdates(itemValues: T[], hash: number) {
+    this.itemSubject$.next(itemValues);
+    this.silentValueUpdates$.next(hash);
+    this.rerenderScrollView();
+  }
+
   rerenderScrollView = () => {
     this._cdr.markForCheck();
     this._zone.run(() => {
@@ -357,31 +363,32 @@ export class ResponsiveVirtualScrollComponent<T> implements OnInit, OnDestroy {
       });
   }
 
+  // Optimized: avoids string concatenation, minimizes per-iteration work, and uses a better hash mixing
   private createSimpleHash(
     values: T[],
     trackByFn: (item: T) => string | boolean | number
   ): number {
-    let hash = 0,
-      i,
-      chr;
+    let hash = 5381; // djb2 seed
     for (let v = 0; v < values.length; v++) {
       const data = trackByFn(values[v]);
-      let str = '';
-      if (typeof data === 'string') {
-        str = data;
+      let val: number;
+      if (typeof data === 'number') {
+        val = data | 0;
       } else if (typeof data === 'boolean') {
-        str = data ? '1' : '0';
+        val = data ? 1 : 0;
+      } else if (typeof data === 'string') {
+        // Hash the string
+        for (let i = 0; i < data.length; i++) {
+          hash = ((hash << 5) + hash) ^ data.charCodeAt(i);
+        }
+        continue;
       } else {
-        str = `${data}`;
+        val = 0;
       }
-      for (i = 0; i < str.length; i++) {
-        chr = str.charCodeAt(i);
-        hash = (hash << 5) - hash + chr;
-        hash |= 0; // Convert to 32bit integer
-      }
+      // Mix number/boolean into hash
+      hash = ((hash << 5) + hash) ^ val;
     }
-
-    return hash;
+    return hash >>> 0; // Ensure unsigned 32-bit integer
   }
 
   initialize(dataObservable: Observable<T[]>) {
@@ -431,19 +438,10 @@ export class ResponsiveVirtualScrollComponent<T> implements OnInit, OnDestroy {
 
     const initData: any[] = [];
 
-    let data$ = undefined;
-
-    if (dataObservable instanceof BehaviorSubject && this.trackByFn$.value) {
-      data$ = connectable(dataObservable.pipe(startWith(initData)), {
-        connector: () => new Subject(),
-        resetOnDisconnect: false,
-      });
-    } else {
-      data$ = connectable(dataObservable.pipe(startWith(initData)), {
-        connector: () => new Subject(),
-        resetOnDisconnect: false,
-      });
-    }
+    const data$ = connectable(dataObservable.pipe(startWith(initData)), {
+      connector: () => new Subject(),
+      resetOnDisconnect: false,
+    });
 
     const dataMeta$ = data$.pipe(
       map((data) => [new Date().getTime(), data.length])
@@ -918,40 +916,85 @@ export class ResponsiveVirtualScrollComponent<T> implements OnInit, OnDestroy {
     let main$: Observable<IVirtualScrollState> | undefined = undefined;
 
     if (dataObservable instanceof BehaviorSubject) {
-      const forceUpdateFunc$ = this.forceRerender$.pipe(
+      const silentUpdateFunc$ = this.silentValueUpdates$.pipe(
         withLatestFrom(data$),
         map(([_, data]) => (state: IVirtualScrollState) => {
           const win = state.scrollWindow;
+          const trackByFn = this.trackByFn$.value;
+          if (
+            !win ||
+            !trackByFn ||
+            !state.scrollWindow ||
+            typeof state.rows !== 'object'
+          ) {
+            state.needsCheck = false;
+            return state;
+          }
 
-          if (win) {
-            const trackByFn = this.trackByFn$.value;
-            if (trackByFn) {
-              Object.values(state.rows as any).forEach((rowComp, rowIndex) => {
-                if ((rowComp as any).instance) {
-                  const rowComponent = (rowComp as any)
-                    .instance as VirtualRowComponent;
+          const compValues = Object.values(state.rows) as {
+            instance?: VirtualRowComponent;
+          }[];
 
-                  const contexts = rowComponent.getAllContextOfRow() as T[];
-                  for (
-                    let columnIndex = 0;
-                    columnIndex < contexts.length;
-                    columnIndex++
-                  ) {
-                    const context = contexts[columnIndex];
+          if (compValues.length === 0) {
+            state.needsCheck = false;
+            return state;
+          }
 
-                    const searchVal = trackByFn(context);
-                    const dataIndex = (data as T[]).findIndex(
-                      (t) => searchVal === trackByFn(t)
-                    );
-                    if (dataIndex !== -1) {
-                      rowComponent.updateItem(columnIndex, data[dataIndex]);
-                    }
-                  }
-                }
-              });
+          const items = data as T[];
+          const trackByValueIndexMap = new Map<
+            string | boolean | number,
+            number
+          >();
+
+          const {
+            visibleStartRow,
+            visibleEndRow,
+            numActualColumns,
+            numActualRows,
+          } = state.scrollWindow;
+
+          const rowPadding = numActualRows; //take the actual rows as padding to prevent errors when scrolling fast
+          const startIndex = Math.max(
+            0,
+            (visibleStartRow - rowPadding) * numActualColumns
+          );
+          const endIndex = Math.min(
+            data.length,
+            (visibleEndRow + rowPadding) * numActualColumns
+          );
+
+          console.log(startIndex);
+          console.log(endIndex);
+
+          for (let itemIndex = startIndex; itemIndex < endIndex; itemIndex++) {
+            const item = items[itemIndex];
+            if (item) {
+              trackByValueIndexMap.set(trackByFn(items[itemIndex]), itemIndex);
             }
           }
-          console.log(data.length);
+
+          compValues.forEach((rowComp) => {
+            if (rowComp?.instance?.updateItem) {
+              const rowComponent = rowComp.instance;
+
+              const contexts = rowComponent.getAllContextOfRow() as T[];
+              for (
+                let columnIndex = 0;
+                columnIndex < contexts.length;
+                columnIndex++
+              ) {
+                const context = contexts[columnIndex];
+                const searchVal = trackByFn(context);
+                if (searchVal !== undefined && searchVal !== null) {
+                  const dataIndex = trackByValueIndexMap.get(searchVal);
+                  if (typeof dataIndex === 'number') {
+                    rowComponent.updateItem(columnIndex, data[dataIndex]);
+                  }
+                }
+              }
+            }
+          });
+          trackByValueIndexMap.clear();
           state.needsCheck = false;
           return state;
         })
@@ -972,7 +1015,7 @@ export class ResponsiveVirtualScrollComponent<T> implements OnInit, OnDestroy {
         updateItemFunc$,
         updateScrollWinFunc$,
         setScrollTopFunc$,
-        forceUpdateFunc$
+        silentUpdateFunc$
       ).pipe(
         scan(scanFunc, {
           measurement: null,
@@ -1087,6 +1130,6 @@ export class ResponsiveVirtualScrollComponent<T> implements OnInit, OnDestroy {
     this.padding$.complete();
     this.trackByFn$.complete();
     this.itemSubject$.complete();
-    this.forceRerender$.complete();
+    this.silentValueUpdates$.complete();
   }
 }

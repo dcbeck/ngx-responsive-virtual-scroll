@@ -26,6 +26,8 @@ export class DemoStateService {
   stretchItems = signal<boolean>(false);
   isGrid = signal<boolean>(true);
 
+  initialStateLoaded = signal<boolean>(false);
+
   data: Signal<ScrollGridItem[]> = computed(() => {
     const favoredItemIdSet = this.favoredItemIds();
     return Array.from({ length: this.numberOfItems() }).map((_, i) => {
@@ -57,21 +59,27 @@ export class DemoStateService {
       { allowSignalWrites: true }
     );
 
-    effect(() => {
+    effect(async () => {
       const selectedItem = this.selectedItem();
-      this.router.navigate(['/'], {
-        queryParams: {
-          selectedIndex: selectedItem ? selectedItem.index : -1,
-          numberOfItems: this.numberOfItems(),
-          maxItemsPerRow: this.maxItemsPerRow(),
-          itemWidth: this.itemWidth(),
-          rowHeight: this.rowHeight(),
-          itemGap: this.itemGap(),
-          scrollViewPadding: this.scrollViewPadding(),
-          stretchItems: this.stretchItems(),
-          isGrid: this.isGrid(),
-        },
-      });
+
+      if (this.initialStateLoaded()) {
+        await this.router.navigate(['/'], {
+          queryParams: {
+            selectedIndex: selectedItem ? selectedItem.index : -1,
+            numberOfItems: this.numberOfItems(),
+            maxItemsPerRow: this.maxItemsPerRow(),
+            itemWidth: this.itemWidth(),
+            rowHeight: this.rowHeight(),
+            itemGap: this.itemGap(),
+            scrollViewPadding: this.scrollViewPadding(),
+            stretchItems: this.stretchItems(),
+            isGrid: this.isGrid(),
+          },
+          queryParamsHandling: 'replace',
+        });
+
+        this.router.navigateByUrl;
+      }
     });
   }
 
@@ -99,8 +107,7 @@ export class DemoStateService {
   }
 
   updateDataByParmMap(paramMap: ParamMap) {
-    if (paramMap.keys.length === 0) return;
-
+    console.log(paramMap);
     const selectedIndex = this.extractInt(paramMap, 'selectedIndex');
     if (selectedIndex !== null) {
       const data = this.data();
@@ -121,6 +128,7 @@ export class DemoStateService {
     }
 
     const maxItemsPerRow = this.extractInt(paramMap, 'maxItemsPerRow');
+    console.log('set maxItemsPerRow', maxItemsPerRow);
     if (maxItemsPerRow !== null && maxItemsPerRow >= 0) {
       this.maxItemsPerRow.set(maxItemsPerRow);
     } else {
@@ -135,6 +143,7 @@ export class DemoStateService {
     }
 
     const rowHeight = this.extractInt(paramMap, 'rowHeight');
+
     if (rowHeight !== null && rowHeight >= 0) {
       this.rowHeight.set(rowHeight);
     } else {
@@ -149,6 +158,7 @@ export class DemoStateService {
     }
 
     const scrollViewPadding = this.extractInt(paramMap, 'scrollViewPadding');
+
     if (scrollViewPadding !== null && scrollViewPadding >= 0) {
       this.scrollViewPadding.set(scrollViewPadding);
     } else {
@@ -168,6 +178,12 @@ export class DemoStateService {
     } else {
       this.isGrid.set(true);
     }
+
+    setTimeout(() => {
+      if (this.initialStateLoaded() === false) {
+        this.initialStateLoaded.set(true);
+      }
+    });
   }
 
   private extractInt(paramMap: ParamMap, key: StateKey): number | null {

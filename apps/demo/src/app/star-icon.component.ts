@@ -13,6 +13,7 @@ import {
     <div
       class=" h-7 flex items-center justify-start gap-2"
       role="button"
+      [attr.id]="starButtonId()"
       (click)="toggle()"
     >
       <span class="size-5 text-blue-600">
@@ -53,10 +54,9 @@ import {
 })
 export class StarIconComponent {
   isStarred = model.required<boolean>();
-
   showText = input<boolean>(false);
-
   enabled = input<boolean>(false);
+  starButtonId = input<string | undefined>(undefined);
 
   toggle() {
     if (this.enabled()) {

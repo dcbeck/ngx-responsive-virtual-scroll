@@ -160,12 +160,15 @@
       class="max-w-36 sm:max-w-40 md:max-w-52 lg:max-w-64 xl:max-w-80 bg-white px-4 shadow-md"
     >
       <div class="flex justify-between w-full items-center py-4">
-        <h2 class="text-xl font-bold truncate">Item {{ sItem.index }}</h2>
+        <h2 class="text-xl font-bold truncate" id="inspector-heading">
+          Item {{ sItem.index }}
+        </h2>
 
         <div
           role="button"
           class="text-black hover:text-blue-700 cursor-pointer rounded-full hover:bg-slate-200 h-7 w-7 items-center justify-center flex"
           (click)="state.selectedItem.set(null)"
+          id="inspector-close-button"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -191,16 +194,18 @@
         ></demo-random-photo>
       </div>
 
-      <p class="text-gray-600 pt-4">This item is at index {{ sItem.index }}</p>
-
-      {{ sItem.isFavored }}
-
-      <demo-star-icon
-        [isStarred]="sItem.isFavored"
-        (isStarredChange)="setFavored($event, sItem.id)"
-        [enabled]="true"
-        [showText]="true"
-      ></demo-star-icon>
+      <p class="text-gray-600 pt-4" id="inspector-close-description">
+        This item is at index {{ sItem.index }}
+      </p>
+      <div class="pt-6">
+        <demo-star-icon
+          [isStarred]="sItem.isFavored"
+          (isStarredChange)="setFavored($event, sItem.id)"
+          [enabled]="true"
+          [showText]="true"
+          [starButtonId]="'inspector-star-button'"
+        ></demo-star-icon>
+      </div>
     </aside>
     }
   </div>
@@ -209,6 +214,8 @@
     <aside
       class="bg-white p-4 shadow-md max-h-full overflow-x-hidden overflow-y-scroll rn-scrollbar h-full"
     >
+      @if (state.initialStateLoaded()) {
+
       <div class="pb-6">
         <label class="cursor-pointer items-center flex">
           <input
@@ -338,6 +345,8 @@
           />
         </div>
       </div>
+
+      }
     </aside>
   </ng-template>
 </div>
