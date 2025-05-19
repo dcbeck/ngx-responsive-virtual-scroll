@@ -24,7 +24,6 @@ import {
   connectable,
   from,
   fromEvent,
-  isObservable,
   lastValueFrom,
   merge,
   Observable,
@@ -124,51 +123,141 @@ export type TScrollGridRow<T> = { rowId: number; items: T[] };
   </div>`,
 })
 export class ResponsiveVirtualScrollComponent<T> implements OnInit, OnDestroy {
-  @Input({ required: true }) set items(itemValues: T[] | Observable<T[]>) {
-    if (isObservable(itemValues)) {
-      this.itemStreamChanged$.next(itemValues);
-    } else {
-      if (this.trackByFn$.value) {
-        const hash = this.createSimpleHash(itemValues, this.trackByFn$.value);
-        if (hash !== this.previousTrackByHash) {
-          this.renewInitialization(itemValues);
-        } else {
-          this.executeSilentValueUpdates(itemValues, hash);
-        }
-        this.previousTrackByHash = hash;
-      } else {
-        this.renewInitialization(itemValues);
-      }
-    }
+  // === Inputs ===
+  @Input({ required: true }) set items(itemValues: T[]) {
+    this.handleItemsInput(itemValues);
   }
-
   @Input() set type(type: ScrollViewType) {
-    this.type$.next(type);
-    if (type === 'list') {
-      this.actualColumns$.next(1);
-    }
+    this.handleTypeInput(type);
   }
-
   @Input() set trackBy(trackByFn: (item: T) => string | boolean | number) {
     this.trackByFn$.next(trackByFn);
   }
+  @Input() stretchItems = false;
+  @Input() autoScrollOnResize = false;
+  @Input() set scrollViewPadding(
+    padding:
+      | number
+      | { x: number; y: number }
+      | { top: number; left: number; bottom: number; right: number }
+  ) {
+    this.handlePaddingInput(padding);
+  }
+  @Input() set itemGap(gap: number) {
+    this.itemGap$.next(gap);
+  }
+  @Input() set gridItemWidth(width: number) {
+    this.itemWidth$.next(width);
+  }
+  @Input({ required: true }) set rowHeight(height: number) {
+    this.itemHeight$.next(height);
+  }
+  @Input() set gridMaxColumns(maxColumns: number) {
+    this.numLimitColumns$.next(maxColumns);
+  }
+  @Input() set renderAdditionalRows(numRows: number) {
+    this.numAdditionalRows$.next(numRows);
+  }
 
+  // === Outputs ===
+  @Output() columnCountChange = new EventEmitter<number>();
+
+  // === Template/Content ===
+  @ContentChild(TemplateRef, { static: true })
+  private _templateRef!: TemplateRef<ScrollItem>;
+  @ViewChild('viewRef', { static: true, read: ViewContainerRef })
+  private _viewContainer!: ViewContainerRef;
+
+  // === State & Observables ===
   previousTrackByHash = 0;
   itemSubject$ = new BehaviorSubject<T[]>([]);
   silentValueUpdates$ = new Subject<number>();
+  private vsUserCmd = new Subject<IUserCmd>();
+  private itemWidth$ = new BehaviorSubject<number>(200);
+  private type$ = new BehaviorSubject<ScrollViewType>('grid');
+  private padding$ = new BehaviorSubject<ScrollViewPadding>({
+    top: 0,
+    bottom: 0,
+    left: 0,
+    right: 0,
+  });
+  private itemGap$ = new BehaviorSubject<number | undefined>(undefined);
+  private itemHeight$ = new ReplaySubject<number>(1);
+  private numAdditionalRows$ = new BehaviorSubject<number>(1);
+  private numLimitColumns$ = new BehaviorSubject<number | undefined>(undefined);
+  private actualColumns$ = new ReplaySubject<number>(1);
+  private unsubscribe$ = new Subject<void>();
+  private scrollWindow$ = new BehaviorSubject<IVirtualScrollWindow | null>(
+    null
+  );
+  private executesAutomaticScroll = false;
+  private itemStreamChanged$ = new ReplaySubject<Observable<T[]>>(1);
+  private trackByFn$ = new BehaviorSubject<
+    undefined | ((item: T) => string | boolean | number)
+  >(undefined);
+  vsOptions: Observable<IVirtualScrollOptions> = combineLatest({
+    itemWidth: this.itemWidth$,
+    itemHeight: this.itemHeight$,
+    numAdditionalRows: this.numAdditionalRows$,
+    numLimitColumns: this.numLimitColumns$,
+    itemGap: this.itemGap$,
+    type: this.type$,
+    padding: this.padding$,
+  });
 
-  /**
-   * stretches items to fill up full container with.
-   * Items could be wider than the provided item with by some amount.
-   */
-  @Input() stretchItems = false;
+  // === DOM/Resize ===
+  private resizeObserver: ResizeObserver;
+  private hostResize$ = new Subject<any>();
 
-  /** if activated scroll view automatically scrolls to item,
-   * which was focused (with mouse/touch) at last.
-   */
-  @Input() autoScrollOnResize = false;
+  // === Misc State ===
+  height = 0;
+  width = '0px';
+  marginTop = 0;
+  marginBottom = 0;
+  private lastFocusedItem: {
+    row: number;
+    column: number;
+    index: number;
+  } | null = null;
+  private _subs: Subscription[] = [];
+  vsEqualsFunc: (prevIndex: number, curIndex: number) => boolean = (
+    prevIndex,
+    curIndex
+  ) => prevIndex === curIndex;
 
-  @Input() set scrollViewPadding(
+  constructor(
+    private readonly _elem: ElementRef,
+    private readonly _cdr: ChangeDetectorRef,
+    private readonly _obsService: ScrollObservableService,
+    private readonly _zone: NgZone
+  ) {
+    this.resizeObserver = new ResizeObserver((data) =>
+      this.hostResize$.next(data)
+    );
+    this.resizeObserver.observe(this._elem.nativeElement);
+  }
+
+  // === Input Handlers ===
+  private handleItemsInput(itemValues: T[]) {
+    if (this.trackByFn$.value) {
+      const hash = this.createSimpleHash(itemValues, this.trackByFn$.value);
+      if (hash !== this.previousTrackByHash) {
+        this.renewInitialization(itemValues);
+      } else {
+        this.executeSilentValueUpdates(itemValues, hash);
+      }
+      this.previousTrackByHash = hash;
+    } else {
+      this.renewInitialization(itemValues);
+    }
+  }
+
+  private handleTypeInput(type: ScrollViewType) {
+    this.type$.next(type);
+    if (type === 'list') this.actualColumns$.next(1);
+  }
+
+  private handlePaddingInput(
     padding:
       | number
       | { x: number; y: number }
@@ -176,24 +265,14 @@ export class ResponsiveVirtualScrollComponent<T> implements OnInit, OnDestroy {
   ) {
     const p = padding as any;
     if (typeof p === 'number' && Number.isFinite(p)) {
-      this.padding$.next({
-        top: p,
-        bottom: p,
-        left: p,
-        right: p,
-      });
+      this.padding$.next({ top: p, bottom: p, left: p, right: p });
     } else if (
       typeof p.x === 'number' &&
       Number.isFinite(p.x) &&
       typeof p.y === 'number' &&
       Number.isFinite(p.y)
     ) {
-      this.padding$.next({
-        top: p.y,
-        bottom: p.y,
-        left: p.x,
-        right: p.x,
-      });
+      this.padding$.next({ top: p.y, bottom: p.y, left: p.x, right: p.x });
     } else if (
       typeof p.top === 'number' &&
       Number.isFinite(p.top) &&
@@ -213,133 +292,89 @@ export class ResponsiveVirtualScrollComponent<T> implements OnInit, OnDestroy {
     }
   }
 
-  //
-
-  @Input() set itemGap(gap: number) {
-    this.itemGap$.next(gap);
-  }
-
-  @Input() set gridItemWidth(width: number) {
-    this.itemWidth$.next(width);
-  }
-
-  @Input({ required: true }) set rowHeight(height: number) {
-    this.itemHeight$.next(height);
-  }
-
-  @Input() set gridMaxColumns(maxColumns: number) {
-    this.numLimitColumns$.next(maxColumns);
-  }
-
-  @Input() set renderAdditionalRows(numRows: number) {
-    this.numAdditionalRows$.next(numRows);
-  }
-
-  @Output() columnCountChange = new EventEmitter<number>();
-
-  private vsUserCmd = new Subject<IUserCmd>();
-
-  vsEqualsFunc: (prevIndex: number, curIndex: number) => boolean = (
-    prevIndex,
-    curIndex
-  ) => prevIndex === curIndex;
-
-  height = 0;
-  width = '0px';
-  marginTop = 0;
-  marginBottom = 0;
-
-  @ContentChild(TemplateRef, { static: true })
-  private _templateRef!: TemplateRef<ScrollItem>;
-
-  @ViewChild('viewRef', { static: true, read: ViewContainerRef })
-  private _viewContainer!: ViewContainerRef;
-
-  private lastFocusedItem: {
-    row: number;
-    column: number;
-    index: number;
-  } | null = null;
-
-  private _subs: Subscription[] = [];
-
-  private itemWidth$ = new BehaviorSubject<number>(200);
-  private type$ = new BehaviorSubject<ScrollViewType>('grid');
-  private padding$ = new BehaviorSubject<ScrollViewPadding>({
-    top: 0,
-    bottom: 0,
-    left: 0,
-    right: 0,
-  });
-  private itemGap$ = new BehaviorSubject<number | undefined>(undefined);
-  private itemHeight$ = new ReplaySubject<number>(1);
-  private numAdditionalRows$ = new BehaviorSubject<number>(1);
-  private numLimitColumns$ = new BehaviorSubject<number | undefined>(undefined);
-  private resizeObserver: ResizeObserver;
-  private hostResize$ = new Subject<any>();
-  private actualColumns$ = new ReplaySubject<number>(1);
-  private unsubscribe$ = new Subject<void>();
-  private scrollWindow$ = new BehaviorSubject<IVirtualScrollWindow | null>(
-    null
-  );
-
-  private executesAutomaticScroll = false;
-
-  private itemStreamChanged$ = new ReplaySubject<Observable<T[]>>(1);
-
-  private trackByFn$ = new BehaviorSubject<
-    undefined | ((item: T) => string | boolean | number)
-  >(undefined);
-
-  vsOptions: Observable<IVirtualScrollOptions> = combineLatest({
-    itemWidth: this.itemWidth$,
-    itemHeight: this.itemHeight$,
-    numAdditionalRows: this.numAdditionalRows$,
-    numLimitColumns: this.numLimitColumns$,
-    itemGap: this.itemGap$,
-    type: this.type$,
-    padding: this.padding$,
-  });
-
-  constructor(
-    private readonly _elem: ElementRef,
-    private readonly _cdr: ChangeDetectorRef,
-    private readonly _obsService: ScrollObservableService,
-    private readonly _zone: NgZone
-  ) {
-    this.resizeObserver = new ResizeObserver((data) => {
-      this.hostResize$.next(data);
-    });
-
-    this.resizeObserver.observe(this._elem.nativeElement);
-  }
-
+  // === Hash/Initialization ===
   private renewInitialization(itemValues: T[]) {
     this.itemSubject$.complete();
     this.itemSubject$ = new BehaviorSubject(itemValues);
     this.itemStreamChanged$.next(this.itemSubject$);
   }
-
   private executeSilentValueUpdates(itemValues: T[], hash: number) {
     this.itemSubject$.next(itemValues);
     this.silentValueUpdates$.next(hash);
     this.rerenderScrollView();
   }
+  private createSimpleHash(
+    values: T[],
+    trackByFn: (item: T) => string | boolean | number
+  ): number {
+    let hash = 5381;
+    for (let v = 0; v < values.length; v++) {
+      const data = trackByFn(values[v]);
+      let val: number;
+      if (typeof data === 'number') {
+        val = data | 0;
+      } else if (typeof data === 'boolean') {
+        val = data ? 1 : 0;
+      } else if (typeof data === 'string') {
+        for (let i = 0; i < data.length; i++) {
+          hash = ((hash << 5) + hash) ^ data.charCodeAt(i);
+        }
+        continue;
+      } else {
+        val = 0;
+      }
+      hash = ((hash << 5) + hash) ^ val;
+    }
+    return hash >>> 0;
+  }
 
+  // === DOM/Scroll ===
   rerenderScrollView = () => {
     this._cdr.markForCheck();
     this._zone.run(() => {
-      //noop
+      /**noop*/
     });
   };
 
   getScrollTop = () => this._elem.nativeElement.scrollTop;
-
   setScrollTop = (scrollTop: number) => {
     this._elem.nativeElement.scrollTop = scrollTop;
   };
 
+  // === Lifecycle ===
   ngOnInit() {
+    this.setupTrackByHashInit();
+    this.itemStreamChanged$
+      .pipe(takeUntil(this.unsubscribe$))
+      .subscribe((itemStream) => {
+        this.initialize(itemStream);
+        this.rerenderScrollView();
+      });
+  }
+  ngOnDestroy() {
+    this._subs.forEach((sub) => sub.unsubscribe());
+    this.resizeObserver.unobserve(this._elem.nativeElement);
+    this.resizeObserver.disconnect();
+    this.hostResize$.complete();
+    this.actualColumns$.complete();
+    this.itemWidth$.complete();
+    this.itemHeight$.complete();
+    this.numAdditionalRows$.complete();
+    this.unsubscribe$.next();
+    this.unsubscribe$.complete();
+    this.vsUserCmd.complete();
+    this.scrollWindow$.complete();
+    this.numLimitColumns$.complete();
+    this.type$.complete();
+    this.itemGap$.complete();
+    this.padding$.complete();
+    this.trackByFn$.complete();
+    this.itemSubject$.complete();
+    this.silentValueUpdates$.complete();
+  }
+
+  // === Private helpers ===
+  private setupTrackByHashInit() {
     combineLatest({
       itemStream: this.itemStreamChanged$,
       trackByFn: this.trackByFn$,
@@ -354,45 +389,10 @@ export class ResponsiveVirtualScrollComponent<T> implements OnInit, OnDestroy {
           this.previousTrackByHash = hash;
         }
       });
-
-    this.itemStreamChanged$
-      .pipe(takeUntil(this.unsubscribe$))
-      .subscribe((itemStream) => {
-        this.initialize(itemStream);
-        this.rerenderScrollView();
-      });
   }
 
-  // Optimized: avoids string concatenation, minimizes per-iteration work, and uses a better hash mixing
-  private createSimpleHash(
-    values: T[],
-    trackByFn: (item: T) => string | boolean | number
-  ): number {
-    let hash = 5381; // djb2 seed
-    for (let v = 0; v < values.length; v++) {
-      const data = trackByFn(values[v]);
-      let val: number;
-      if (typeof data === 'number') {
-        val = data | 0;
-      } else if (typeof data === 'boolean') {
-        val = data ? 1 : 0;
-      } else if (typeof data === 'string') {
-        // Hash the string
-        for (let i = 0; i < data.length; i++) {
-          hash = ((hash << 5) + hash) ^ data.charCodeAt(i);
-        }
-        continue;
-      } else {
-        val = 0;
-      }
-      // Mix number/boolean into hash
-      hash = ((hash << 5) + hash) ^ val;
-    }
-    return hash >>> 0; // Ensure unsigned 32-bit integer
-  }
-
+  // === Main initialization logic (not refactored for brevity, but should be extracted for clarity) ===
   initialize(dataObservable: Observable<T[]>) {
-    console.log('run intialize');
     //reset all
     if (this._subs.length > 0) {
       this._subs.forEach((sub) => sub.unsubscribe());
@@ -964,9 +964,6 @@ export class ResponsiveVirtualScrollComponent<T> implements OnInit, OnDestroy {
             (visibleEndRow + rowPadding) * numActualColumns
           );
 
-          console.log(startIndex);
-          console.log(endIndex);
-
           for (let itemIndex = startIndex; itemIndex < endIndex; itemIndex++) {
             const item = items[itemIndex];
             if (item) {
@@ -1110,27 +1107,5 @@ export class ResponsiveVirtualScrollComponent<T> implements OnInit, OnDestroy {
     this._subs.push(measure$.connect());
     this._subs.push(options$.connect());
     this._subs.push(data$.connect());
-  }
-
-  ngOnDestroy() {
-    this._subs.forEach((sub) => sub.unsubscribe());
-    this.resizeObserver.unobserve(this._elem.nativeElement);
-    this.resizeObserver.disconnect();
-    this.hostResize$.complete();
-    this.actualColumns$.complete();
-    this.itemWidth$.complete();
-    this.itemHeight$.complete();
-    this.numAdditionalRows$.complete();
-    this.unsubscribe$.next();
-    this.unsubscribe$.complete();
-    this.vsUserCmd.complete();
-    this.scrollWindow$.complete();
-    this.numLimitColumns$.complete();
-    this.type$.complete();
-    this.itemGap$.complete();
-    this.padding$.complete();
-    this.trackByFn$.complete();
-    this.itemSubject$.complete();
-    this.silentValueUpdates$.complete();
   }
 }
