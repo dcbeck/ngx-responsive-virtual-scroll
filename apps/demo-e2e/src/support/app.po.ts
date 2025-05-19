@@ -33,9 +33,11 @@ export const visitState = (options?: {
     cy.get('#grid-item-learn-more-btn-0').contains('Learn More');
   }
 
-  if (Cypress.$('input').length !== 0) {
-    cy.get('#quantity').should('have.value', `${numItems}`);
-  }
+  cy.get('ngx-responsive-virtual-scroll').then(() => {
+    if (Cypress.$('input').length !== 0) {
+      cy.get('#quantity').should('have.value', `${numItems}`);
+    }
+  });
 };
 
 export const scrollToVirtualScrollViewBottom = () =>
@@ -71,6 +73,50 @@ export const shouldHaveNumberOfColumns = (cols: number) => {
   cy.get('ngx-responsive-virtual-scroll-row:first')
     .find('demo-grid-item')
     .should('have.length', cols);
+};
+
+export const getNumberOfVirtualRows = () => {
+  return cy
+    .get('ngx-responsive-virtual-scroll-row')
+    .then(($rows) => $rows.length);
+};
+
+export const getItemIndexValueAtPosition = (
+  colIndex: number,
+  rowIndex: number
+) => {
+  return getItemAtPosition(colIndex, rowIndex).then((item) => {
+    const firstId = item.attr('id');
+    if (firstId === undefined) return 0;
+    const value = firstId.replace('grid-item-', '');
+    const index = parseInt(value);
+    if (Number.isNaN(index)) {
+      throw new Error('could not parse index of value');
+    }
+    return index;
+  });
+};
+
+export const getItemAtPosition = (colIndex: number, rowIndex: number) => {
+  cy.log(`get items at ${colIndex}, ${rowIndex}`);
+  return cy
+    .get('ngx-responsive-virtual-scroll-row')
+    .eq(rowIndex)
+    .find('demo-grid-item')
+    .eq(colIndex);
+};
+
+export const getIndexOfFirstItemInVirtualScrollView = () => {
+  return cy.get('ngx-responsive-virtual-scroll-row').then((scrollView) => {
+    const firstId = scrollView.attr('id');
+    if (firstId === undefined) return 0;
+    const value = firstId.replace('grid-item-', '');
+    const index = parseInt(value);
+    if (Number.isNaN(index)) {
+      throw new Error('could not parse index of value');
+    }
+    return index;
+  });
 };
 
 export const gridItemsShouldExistWithinIndexRange = (
