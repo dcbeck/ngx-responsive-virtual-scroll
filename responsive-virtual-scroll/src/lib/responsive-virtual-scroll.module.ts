@@ -1,5 +1,5 @@
 import { NgModule } from '@angular/core';
-import { ResponsiveVirtualScrollComponent } from './responsive-virtual-scroll/responsive-virtual-scroll.component';
+import { ResponsiveVirtualScrollComponent } from './responsive-virtual-scroll-old/responsive-virtual-scroll.component';
 
 @NgModule({
   imports: [ResponsiveVirtualScrollComponent],

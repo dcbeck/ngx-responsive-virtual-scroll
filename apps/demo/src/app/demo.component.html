@@ -98,7 +98,8 @@
     <div class="flex flex-row gap-1 w-full h-full flex-1 min-h-0 min-w-0">
       @if (state.itemWidth() >= 100 && state.rowHeight() >= 100) { @if
       (state.isGridVisible()) { @if (state.isGrid()) {
-      <ngx-responsive-virtual-scroll
+      <!--
+              <ngx-responsive-virtual-scroll
         class="rn-scrollbar"
         [items]="state.data()"
         [type]="'grid'"
@@ -111,22 +112,31 @@
         [rowHeight]="state.rowHeight()"
         [renderAdditionalRows]="1"
         [trackBy]="trackByFn"
+      >-->
+      <ngx-responsive-virtual-scroll
+        class="rn-scrollbar w-full"
+        [items]="state.data()"
+        [type]="'grid'"
+        [itemHeight]="state.rowHeight()"
+        [itemWidth]="state.itemWidth()"
+        [trackBy]="trackByFn"
       >
-        <ng-template let-item let-row="row" let-column="column">
+        <div *ngxResponsiveVirtualScrollItem="let item" class="pt-4 pl-4">
           <demo-grid-item
             type="grid"
             [item]="item"
-            [row]="row"
-            [column]="column"
+            [row]="0"
+            [column]="0"
             [id]="'grid-item-' + item.index"
             [attr.data-selected]="item.index === state.selectedItem()?.index"
             [isSelected]="item.index === state.selectedItem()?.index"
             (isSelectedChange)="selectItem(item)"
           ></demo-grid-item>
-        </ng-template>
+        </div>
       </ngx-responsive-virtual-scroll>
       } @else {
-      <ngx-responsive-virtual-scroll
+      <!--
+             <ngx-responsive-virtual-scroll
         class="rn-scrollbar"
         [items]="state.data()"
         [type]="'list'"
@@ -136,6 +146,12 @@
         [autoScrollOnResize]="true"
         [rowHeight]="state.rowHeight()"
         [renderAdditionalRows]="1"
+        [trackBy]="trackByFn"
+      >-->
+      <ngx-responsive-virtual-scroll
+        class="rn-scrollbar"
+        [items]="state.data()"
+        [type]="'list'"
         [trackBy]="trackByFn"
       >
         <ng-template let-item let-row="row" let-column="column">

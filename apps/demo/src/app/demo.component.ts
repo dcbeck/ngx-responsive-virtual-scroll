@@ -5,6 +5,7 @@ import {
   Component,
   HostListener,
   OnInit,
+  TrackByFunction,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterModule } from '@angular/router';
@@ -86,5 +87,5 @@ export class DemoComponent implements OnInit {
     this.cdr.markForCheck();
   }
 
-  trackByFn = (item: ScrollGridItem) => item.id;
+  trackByFn: TrackByFunction<ScrollGridItem> = (index: number, item: ScrollGridItem) => `${item.id}_${item.isFavored}`;
 }

@@ -424,7 +424,7 @@ export class ResponsiveVirtualScrollComponent<T> implements OnInit, OnDestroy {
               )
             ) {
               await lastValueFrom(
-                this._obsService.scrollWin$.pipe(debounceTime(20), take(1))
+                this._obsService.scrollWin$.pipe(debounceTime(50), take(1))
               );
               this.vsUserCmd.next(new FocusItemCmd(index));
             }
@@ -473,7 +473,10 @@ export class ResponsiveVirtualScrollComponent<T> implements OnInit, OnDestroy {
       debounceTime(20, animationScheduler),
       map(() => getContainerRect()),
       startWith(getContainerRect()),
-      map(({ width, height }) => ({ width, height }))
+      map(({ width, height }) => ({ width, height })),
+      tap((data) => {
+        console.log('resize event', data);
+      })
     );
 
     const scroll$ = new Subject<void>();
@@ -507,13 +510,15 @@ export class ResponsiveVirtualScrollComponent<T> implements OnInit, OnDestroy {
       options$,
     ]).pipe(
       map(([scrollTop, measurement, [dataTimestamp, dataLength], options]) => {
-        return calcScrollWindow(
+        const scrollWindow = calcScrollWindow(
           scrollTop,
           measurement,
           dataLength,
           dataTimestamp,
           options
         );
+        console.log(scrollWindow);
+        return scrollWindow;
       }),
       distinctUntilChanged((prevWin, curWin) => {
         return (
@@ -533,10 +538,8 @@ export class ResponsiveVirtualScrollComponent<T> implements OnInit, OnDestroy {
 
     const dScrollWin$ = scrollWin$.pipe(pairwise());
 
-    const renderCmdObs$ = combineLatest({
-      dScrollWin: dScrollWin$,
-    }).pipe(
-      concatMap(({ dScrollWin }) => {
+    const renderCmdObs$ = dScrollWin$.pipe(
+      concatMap((dScrollWin) => {
         const [prevWin, curWin] = dScrollWin;
         let rowsDiffCmd$ = of(new NoopCmd());
         let rowsUpdateCmd$ = of(new NoopCmd());
@@ -544,6 +547,8 @@ export class ResponsiveVirtualScrollComponent<T> implements OnInit, OnDestroy {
         const prevIndexMap = {};
         const curIndexMap = {};
 
+        console.log(prevWin.visibleStartRow, curWin.visibleStartRow);
+        console.log(prevWin.visibleEndRow, curWin.visibleEndRow);
         // abs: prevent iterating when prevWin has -1 -> -1
         forRowsIn(
           Math.abs(prevWin.visibleStartRow),
@@ -589,7 +594,6 @@ export class ResponsiveVirtualScrollComponent<T> implements OnInit, OnDestroy {
               }
             );
           }
-
           rowsDiffCmd$ = concat(
             from(removeItemCmds.reverse()),
             from(removeRowCmds)
@@ -761,7 +765,7 @@ export class ResponsiveVirtualScrollComponent<T> implements OnInit, OnDestroy {
         const newRow = this._viewContainer.createComponent(VirtualRowComponent);
 
         newRow.instance.setSizeObservables(
-          this.actualColumns$,
+          this.actualColumns$.pipe(distinctUntilChanged()),
           this.itemHeight$,
           this.type$,
           this.itemGap$,
