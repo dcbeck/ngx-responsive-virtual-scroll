@@ -11,6 +11,7 @@ export interface VirtualScrollState<T> {
     readonly maxIndex: number;
     readonly lastScrollOffset: VirtualScrollState.Point;
     readonly trackBy: TrackByFunction<T>;
+    readonly gridList: boolean;
 
     readonly virtualItem: VirtualItem<T>;
     readonly viewContainerRef: ViewContainerRef;

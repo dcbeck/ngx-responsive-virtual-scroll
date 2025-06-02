@@ -15,15 +15,21 @@ export class DefaultVirtualScrollStrategy<T>
     viewIndex?: number
   ): EmbeddedViewRef<VirtualItem.ViewContext<T>> {
     const viewRef = scrollState.viewContainerRef.createEmbeddedView(
-        scrollState.virtualItem.templateRef,
-        { $implicit: item, index: globalIndex },
-        viewIndex
+      scrollState.virtualItem.templateRef,
+      { $implicit: item, index: globalIndex },
+      viewIndex
     );
-
     // Add custom class to the root element node
-    const rootNode = viewRef.rootNodes?.[0];
-    if (rootNode && rootNode.classList) {
-        rootNode.classList.add('ngx-scroll-view-item');
+    if (scrollState.gridList) {
+      const rootNode = viewRef.rootNodes?.[0];
+      if (rootNode && rootNode.classList) {
+        rootNode.classList.add('ngx-scroll-view-grid-item');
+      }
+    } else {
+      const rootNode = viewRef.rootNodes?.[0];
+      if (rootNode && rootNode.classList) {
+        rootNode.classList.add('ngx-scroll-view-list-item');
+      }
     }
 
     return viewRef;

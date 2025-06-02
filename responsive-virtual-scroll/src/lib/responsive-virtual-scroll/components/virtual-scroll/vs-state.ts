@@ -1,5 +1,5 @@
 import { TrackByFunction } from '@angular/core';
-import { BehaviorSubject, ReplaySubject } from 'rxjs';
+import { BehaviorSubject, ReplaySubject, Subject } from 'rxjs';
 import { VirtualScrollState } from './scroll-state/virtual-scroll-state';
 
 const TRACK_BY_IDENTITY_FN = <T>(_index: number, item: T) => item;
@@ -35,6 +35,9 @@ export class VsState<T> {
   public readonly scrollDebounceMs = new BehaviorSubject<number>(
     VsState.DEFAULT_SCROLL_THROTTLE_MS
   );
+
+  public readonly lastFocusedItem = new ReplaySubject<T>(1);
+  public readonly itemsPerRowChanged = new Subject<number>();
 
   private lastScrollContainer: null | HTMLElement = null;
 
@@ -74,5 +77,7 @@ export class VsState<T> {
     this.renderingViews.complete();
     this.asyncRendering.complete();
     this.scrollDebounceMs.complete();
+    this.lastFocusedItem.complete();
+    this.itemsPerRowChanged.complete();
   }
 }

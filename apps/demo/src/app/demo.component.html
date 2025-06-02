@@ -106,7 +106,7 @@
         [itemGap]="state.itemGap()"
         [stretchItems]="state.stretchItems()"
         [scrollViewPadding]="state.scrollViewPadding()"
-        [autoScrollOnResize]="true"
+    
         [gridMaxColumns]="state.maxItemsPerRow()"
         [gridItemWidth]="state.itemWidth()"
         [rowHeight]="state.rowHeight()"
@@ -119,9 +119,13 @@
         [type]="'grid'"
         [itemHeight]="state.rowHeight()"
         [itemWidth]="state.itemWidth()"
+        [autoScrollOnResize]="true"
         [trackBy]="trackByFn"
       >
-        <div *ngxResponsiveVirtualScrollItem="let item" class="pt-4 pl-4">
+        <div
+          *ngxResponsiveVirtualScrollItem="let item"
+          [ngStyle]="{ 'padding.px': itemPadding() }"
+        >
           <demo-grid-item
             type="grid"
             [item]="item"
@@ -149,23 +153,27 @@
         [trackBy]="trackByFn"
       >-->
       <ngx-responsive-virtual-scroll
-        class="rn-scrollbar"
+        class="rn-scrollbar w-full"
         [items]="state.data()"
         [type]="'list'"
         [trackBy]="trackByFn"
+        [itemHeight]="state.rowHeight()"
       >
-        <ng-template let-item let-row="row" let-column="column">
+        <div
+          *ngxResponsiveVirtualScrollItem="let item"
+          [ngStyle]="{ 'padding.px': itemPadding(), 'width.px': 300 }"
+        >
           <demo-grid-item
             type="list"
             [item]="item"
-            [row]="row"
+            [row]="0"
             [id]="'grid-item-' + item.index"
-            [column]="column"
+            [column]="0"
             [attr.data-selected]="item.index === state.selectedItem()?.index"
             [isSelected]="item.index === state.selectedItem()?.index"
             (isSelectedChange)="selectItem(item)"
           ></demo-grid-item>
-        </ng-template>
+        </div>
       </ngx-responsive-virtual-scroll>
       } } } @else {
       <div class="p-6 text-lg text-red-500">

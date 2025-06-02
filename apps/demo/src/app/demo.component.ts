@@ -3,6 +3,7 @@ import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
   Component,
+  computed,
   HostListener,
   OnInit,
   TrackByFunction,
@@ -58,6 +59,8 @@ export class DemoComponent implements OnInit {
   isSettingsMenuShownInMobile = false;
   private mobileBreakpoint = 768 + 200;
 
+  itemPadding = computed(() => this.state.itemGap() / 2.0);
+
   @HostListener('window:resize', ['$event'])
   onResize(event: Event) {
     this.setMobileView(event);
@@ -87,5 +90,8 @@ export class DemoComponent implements OnInit {
     this.cdr.markForCheck();
   }
 
-  trackByFn: TrackByFunction<ScrollGridItem> = (index: number, item: ScrollGridItem) => `${item.id}_${item.isFavored}`;
+  trackByFn: TrackByFunction<ScrollGridItem> = (
+    index: number,
+    item: ScrollGridItem
+  ) => `${item.id}_${item.isFavored}`;
 }
