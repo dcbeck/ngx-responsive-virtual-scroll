@@ -41,9 +41,7 @@ export class ItemWidthService {
       }
 
       if (shouldStretchItems && isGrid) {
-        const stretchedWidth = Math.floor(
-          (scrollContainerWidth - 20) / itemsPerRow
-        );
+        const stretchedWidth =  Math.floor((scrollContainerWidth-20) / itemsPerRow);
 
         this.setCurrentItemWidth(stretchedWidth);
         return;

@@ -348,7 +348,7 @@ export class VirtualScrollComponent<T>
     effect(() => {
       const autoScrollOnResize = this.autoScrollOnResize();
       const scrollContainer = this._scrollContainer();
-   
+
       this.unsubscribeFromPointerEvent$.next();
       if (autoScrollOnResize && scrollContainer) {
         fromEvent<PointerEvent>(scrollContainer, 'pointerdown')
@@ -397,9 +397,9 @@ export class VirtualScrollComponent<T>
                   left: scrollContainer.scrollLeft,
                   top: scrollContainer.scrollTop,
                   right:
-                    scrollContainer.scrollLeft + scrollContainer.clientWidth,
+                    scrollContainer.scrollLeft + this.getUsableContainerWidth(),
                   bottom:
-                    scrollContainer.scrollTop + scrollContainer.clientHeight,
+                    scrollContainer.scrollTop + this.getUsableContainerHeight(),
                 })
               )
             )
@@ -415,12 +415,10 @@ export class VirtualScrollComponent<T>
             )
             .subscribe((containerBounds) => {
               // Calculate usable width excluding padding and scrollbar insets
-              const style = getComputedStyle(scrollContainer);
-              const paddingLeft = parseFloat(style.paddingLeft) || 0;
-              const paddingRight = parseFloat(style.paddingRight) || 0;
-              const usableWidth =
-                scrollContainer.clientWidth - paddingLeft - paddingRight;
-              this.widthService.setScrollContainerWidth(usableWidth);
+
+              this.widthService.setScrollContainerWidth(
+                this.getUsableContainerWidth()
+              );
 
               this._lastScrollOffset.x =
                 containerBounds.left - this._scrollPosition.x;
@@ -582,17 +580,17 @@ export class VirtualScrollComponent<T>
           const renderedBounds: ScrollContainerRect = {
             left: scrollPosition.x,
             top: scrollPosition.y,
-            right: scrollPosition.x + scrollContainer.clientWidth,
-            bottom: scrollPosition.y + scrollContainer.clientHeight,
+            right: scrollPosition.x + this.getUsableContainerWidth(),
+            bottom: scrollPosition.y + this.getUsableContainerHeight(),
           };
-          const bufferLengthPx = scrollContainer.clientHeight * bufferLength;
+          const bufferLengthPx = this.getUsableContainerHeight() * bufferLength;
 
           // Calculate the number of rendered items per row
 
           const itemsPerRow = Math.max(
             1,
             gridList
-              ? Math.floor(scrollContainer.clientWidth / minItemWidth!)
+              ? Math.floor(this.getUsableContainerWidth() / minItemWidth!)
               : 1
           );
           const virtualScrollHeight =
@@ -690,8 +688,9 @@ export class VirtualScrollComponent<T>
                 if (this.scrollContainer && this.itemHeightReal != null) {
                   const row = Math.floor(index / itemsPerRow);
                   const scrollTop = row * this.itemHeightReal;
-
-                  this.scrollContainer.scrollTop = scrollTop;
+                  const style = getComputedStyle(this.scrollContainer);
+                  const paddingTop = parseFloat(style.paddingTop) || 0;
+                  this.scrollContainer.scrollTop = scrollTop + paddingTop;
                   this.cdRef.markForCheck();
                 }
               }
@@ -699,6 +698,58 @@ export class VirtualScrollComponent<T>
           }, 30);
         });
     }
+  }
+
+  // Cache for container paddings to avoid repeated getComputedStyle calls
+  private _containerPaddingCache: {
+    width: {
+      clientWidth: number;
+      useable: number;
+    } | null;
+    height: {
+      clientHeight: number;
+      useable: number;
+    } | null;
+  } = { width: null, height: null };
+
+  private getUsableContainerWidth() {
+    const container = this.scrollContainer;
+    if (!container) return 0;
+
+    // Only recalculate if clientWidth has changed
+    if (
+      !this._containerPaddingCache.width ||
+      this._containerPaddingCache.width.clientWidth !== container.clientWidth
+    ) {
+      const style = getComputedStyle(container);
+      const paddingLeft = parseFloat(style.paddingLeft) || 0;
+      const paddingRight = parseFloat(style.paddingRight) || 0;
+      this._containerPaddingCache.width = {
+        clientWidth: container.clientWidth,
+        useable: container.clientWidth - paddingLeft - paddingRight,
+      };
+    }
+    return this._containerPaddingCache.width!.useable;
+  }
+
+  private getUsableContainerHeight() {
+    const container = this.scrollContainer;
+    if (!container) return 0;
+
+    // Only recalculate if clientHeight has changed
+    if (
+      !this._containerPaddingCache.height ||
+      this._containerPaddingCache.height.clientHeight !== container.clientHeight
+    ) {
+      const style = getComputedStyle(container);
+      const paddingTop = parseFloat(style.paddingTop) || 0;
+      const paddingBottom = parseFloat(style.paddingBottom) || 0;
+      this._containerPaddingCache.height = {
+        clientHeight: container.clientHeight,
+        useable: container.clientHeight - paddingTop - paddingBottom,
+      };
+    }
+    return this._containerPaddingCache.height!.useable;
   }
 
   public get scrollContainer(): HTMLElement | null {
@@ -919,8 +970,16 @@ export class VirtualScrollComponent<T>
    * Batch update of virtual spacer heights for better performance and readability.
    */
   private updateVirtualSpacers(spaceBeforePx: number, spaceAfterPx: number) {
-    this.renderer.setStyle(this._virtualSpacerBefore.nativeElement, 'height', `${spaceBeforePx}px`);
-    this.renderer.setStyle(this._virtualSpacerAfter.nativeElement, 'height', `${spaceAfterPx}px`);
+    this.renderer.setStyle(
+      this._virtualSpacerBefore.nativeElement,
+      'height',
+      `${spaceBeforePx}px`
+    );
+    this.renderer.setStyle(
+      this._virtualSpacerAfter.nativeElement,
+      'height',
+      `${spaceAfterPx}px`
+    );
   }
 
   private clearViewsSafe(): Observable<void> {
