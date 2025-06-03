@@ -163,9 +163,6 @@ export class VirtualScrollComponent<T>
 
   @Input() set items(value: T[]) {
     this.stateRef.items.next(value);
-    setTimeout(() => {
-      this.cdr.markForCheck();
-    }, 100);
   }
   get items(): T[] {
     return this.stateRef.items.value;
@@ -248,6 +245,7 @@ export class VirtualScrollComponent<T>
 
   @Input() set trackBy(value: TrackByFunction<T>) {
     this.stateRef.trackBy.next(value);
+    this.stateRef.trackByChanged.next();
   }
 
   get trackBy(): TrackByFunction<T> {
@@ -441,28 +439,11 @@ export class VirtualScrollComponent<T>
     this._scrollContainer.set(listElement);
     this._listElement.set(listElement);
 
-    // Clear all views if the trackBy changes
-    this.stateRef.trackBy
-      .pipe(switchMap(() => this.clearViewsSafe()))
-      .pipe(takeUntil(this.destroy$))
-      .subscribe();
-
     // Clean the view cache when the list of items changes
     this.stateRef.items
       .pipe(switchMap(() => this.waitForRenderComplete))
       .pipe(takeUntil(this.destroy$))
       .subscribe(() => this.cleanViewCache());
-
-    // Clear views and recalculate item size if changing grid list view state
-    this.stateRef.gridList
-      .pipe(
-        distinctUntilChanged(),
-        skip(1),
-        delay(0), // Wait for any DOM updates to occur
-        switchMap(() => this.clearViewsSafe())
-      )
-      .pipe(takeUntil(this.destroy$))
-      .subscribe(() => this.recalculateItemSize());
 
     // Clear the view cache if disabled
     this.stateRef.viewCache
@@ -661,6 +642,25 @@ export class VirtualScrollComponent<T>
 
   ngAfterViewInit(): void {
     this.afterViewInit$.next();
+
+    // Clear all views if the trackBy changes
+    this.stateRef.trackByChanged
+      .pipe(switchMap(() => this.clearViewsSafe()))
+      .pipe(takeUntil(this.destroy$))
+      .subscribe();
+
+    // Clear views and recalculate item size if changing grid list view state
+    this.stateRef.gridList
+      .pipe(
+        distinctUntilChanged(),
+        skip(1),
+        delay(0), // Wait for any DOM updates to occur
+        switchMap(() => this.clearViewsSafe())
+      )
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(() => {
+        this.recalculateItemSize();
+      });
 
     this.itemWidthCalculated.itemWidth.subscribe((width) => {
       this.itemWidthReal = width;

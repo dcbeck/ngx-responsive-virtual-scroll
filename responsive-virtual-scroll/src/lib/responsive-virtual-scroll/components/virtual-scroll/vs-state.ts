@@ -15,10 +15,11 @@ export class VsState<T> {
   public readonly bufferLength = new BehaviorSubject<number>(
     VsState.DEFAULT_BUFFER_LENGTH
   );
-  public readonly gridList = new BehaviorSubject<boolean>(false);
+  public readonly gridList = new ReplaySubject<boolean>(1);
   public readonly trackBy = new BehaviorSubject<TrackByFunction<T>>(
     TRACK_BY_IDENTITY_FN
   );
+  public readonly trackByChanged = new Subject<void>();
 
   public readonly viewCache = new BehaviorSubject<number | boolean>(false);
   public readonly renderedItems = new BehaviorSubject<T[]>([]);
@@ -78,5 +79,6 @@ export class VsState<T> {
     this.scrollDebounceMs.complete();
     this.lastFocusedItem.complete();
     this.itemsPerRowChanged.complete();
+    this.trackByChanged.complete();
   }
 }
