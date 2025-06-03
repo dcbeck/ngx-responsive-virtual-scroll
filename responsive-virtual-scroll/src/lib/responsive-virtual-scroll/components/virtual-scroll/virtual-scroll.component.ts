@@ -348,6 +348,7 @@ export class VirtualScrollComponent<T>
     effect(() => {
       const autoScrollOnResize = this.autoScrollOnResize();
       const scrollContainer = this._scrollContainer();
+   
       this.unsubscribeFromPointerEvent$.next();
       if (autoScrollOnResize && scrollContainer) {
         fromEvent<PointerEvent>(scrollContainer, 'pointerdown')
@@ -630,17 +631,8 @@ export class VirtualScrollComponent<T>
             Math.floor((items.length - (this._maxIndex + 1)) / itemsPerRow) *
             itemHeight!;
 
-          // Update the virtual spacers in the DOM
-          renderer.setStyle(
-            this._virtualSpacerBefore.nativeElement,
-            'height',
-            `${spaceBeforePx}px`
-          );
-          renderer.setStyle(
-            this._virtualSpacerAfter.nativeElement,
-            'height',
-            `${spaceAfterPx}px`
-          );
+          // Update the virtual spacers in the DOM (optimized)
+          this.updateVirtualSpacers(spaceBeforePx, spaceAfterPx);
         }
       );
 
@@ -923,22 +915,20 @@ export class VirtualScrollComponent<T>
     }
   }
 
+  /**
+   * Batch update of virtual spacer heights for better performance and readability.
+   */
+  private updateVirtualSpacers(spaceBeforePx: number, spaceAfterPx: number) {
+    this.renderer.setStyle(this._virtualSpacerBefore.nativeElement, 'height', `${spaceBeforePx}px`);
+    this.renderer.setStyle(this._virtualSpacerAfter.nativeElement, 'height', `${spaceAfterPx}px`);
+  }
+
   private clearViewsSafe(): Observable<void> {
     return this.waitForRenderComplete.pipe(
       map(() => {
         this.clearRenderedViews();
         this.clearCachedViews();
-
-        this.renderer.setStyle(
-          this._virtualSpacerBefore.nativeElement,
-          'height',
-          0
-        );
-        this.renderer.setStyle(
-          this._virtualSpacerAfter.nativeElement,
-          'height',
-          0
-        );
+        this.updateVirtualSpacers(0, 0);
       })
     );
   }
