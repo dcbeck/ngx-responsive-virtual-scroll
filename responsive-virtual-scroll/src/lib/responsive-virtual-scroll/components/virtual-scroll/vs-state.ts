@@ -1,5 +1,11 @@
-import { TrackByFunction } from '@angular/core';
-import { BehaviorSubject, ReplaySubject, Subject } from 'rxjs';
+import { ChangeDetectorRef, TrackByFunction } from '@angular/core';
+import {
+  BehaviorSubject,
+  combineLatest,
+  debounceTime,
+  ReplaySubject,
+  Subject,
+} from 'rxjs';
 import { VirtualScrollState } from './scroll-state/virtual-scroll-state';
 
 const TRACK_BY_IDENTITY_FN = <T>(_index: number, item: T) => item;
@@ -40,6 +46,7 @@ export class VsState<T> {
 
   private lastScrollContainer: null | HTMLElement = null;
 
+
   private lastIsRenderingViews = false;
   setIsRenderingView(isRenderingViews: boolean) {
     if (this.lastIsRenderingViews !== isRenderingViews) {
@@ -57,6 +64,23 @@ export class VsState<T> {
       this.lastScrollContainer = scrollContainer;
       this.scrollContainer.next(scrollContainer);
     }
+  }
+
+  setCdr(cdr: ChangeDetectorRef) {
+    combineLatest([
+      this.items,
+      this.itemHeight,
+      this.gridList,
+      this.bufferLength,
+      this.asyncRendering,
+      this.scrollDebounceMs,
+      this.trackBy,
+    ])
+      .pipe(debounceTime(50))
+      .subscribe(() => {
+        cdr.markForCheck();
+        cdr.detectChanges();
+      });
   }
 
   destroy() {

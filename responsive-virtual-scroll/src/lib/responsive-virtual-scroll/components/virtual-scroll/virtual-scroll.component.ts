@@ -342,11 +342,14 @@ export class VirtualScrollComponent<T>
     private readonly scrollStrategy: VirtualScrollStrategy<T>,
     private readonly renderer: Renderer2,
     private readonly zone: NgZone,
-    private readonly cdRef: ChangeDetectorRef,
+    private readonly cdr: ChangeDetectorRef,
 
     { nativeElement: listElement }: ElementRef<HTMLElement>
   ) {
     this.itemWidthCalculated = new ItemWidthCalc();
+
+
+    this.stateRef.setCdr(cdr);
 
     effect(() => {
       const autoScrollOnResize = this.autoScrollOnResize();
@@ -430,6 +433,8 @@ export class VirtualScrollComponent<T>
               x: containerBounds.left,
               y: containerBounds.top,
             };
+
+            this.cdr.detectChanges();
           });
       }
 
@@ -605,7 +610,7 @@ export class VirtualScrollComponent<T>
             renderedBounds.bottom
           );
 
-          cdRef.detach();
+          cdr.detach();
 
           // Calculate which items should be rendered on screen
           this._itemsPerRow = itemsPerRow;
@@ -619,8 +624,8 @@ export class VirtualScrollComponent<T>
           );
           this._renderedItems = items.slice(this._minIndex, this._maxIndex + 1);
 
-          cdRef.reattach();
-          cdRef.markForCheck();
+          cdr.reattach();
+          cdr.markForCheck();
 
           // Calculate the virtual scroll space before/after the rendered items
           const spaceBeforePx =
@@ -665,7 +670,7 @@ export class VirtualScrollComponent<T>
     this.itemWidthCalculated.itemWidth.subscribe((width) => {
       this.itemWidthReal = width;
       this.itemWidthStyle = `${width}px`;
-      this.cdRef.markForCheck();
+      this.cdr.detectChanges();
     });
 
     this.subscribeToAutoscrollEvents();
@@ -690,7 +695,7 @@ export class VirtualScrollComponent<T>
                   const style = getComputedStyle(this.scrollContainer);
                   const paddingTop = parseFloat(style.paddingTop) || 0;
                   this.scrollContainer.scrollTop = scrollTop + paddingTop;
-                  this.cdRef.markForCheck();
+                  this.cdr.detectChanges();
                 }
               }
             }
