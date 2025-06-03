@@ -60,7 +60,7 @@ import { LI_VIRTUAL_SCROLL_STATE } from './scroll-state/virtual-scroll-state.tok
 import { withNextFrom } from '../../operators/with-next-from';
 import { delayUntil } from '../../operators/delay-until';
 import { VsState } from './vs-state';
-import { ItemWidthService } from './item-width.service';
+import { ItemWidthCalc } from './item-width-calc';
 
 export interface ScrollContainerRect {
   left: number;
@@ -173,13 +173,13 @@ export class VirtualScrollComponent<T>
   }
 
   @Input() set stretchItems(isStretch: boolean) {
-    this.widthService.setShouldStretchItems(isStretch);
+    this.itemWidthCalculated.setShouldStretchItems(isStretch);
   }
 
   set gridList(value: boolean) {
     this.stateRef.gridList.next(value);
     this.isGridList = value;
-    this.widthService.setIsGrid(value);
+    this.itemWidthCalculated.setIsGrid(value);
   }
   get gridList(): boolean {
     return this.isGridList;
@@ -198,7 +198,7 @@ export class VirtualScrollComponent<T>
   autoScrollOnResize = input(false);
 
   @Input() set gridItemWidth(value: number | undefined) {
-    this.widthService.setInputItemWidth(value ?? 0);
+    this.itemWidthCalculated.setInputItemWidth(value ?? 0);
   }
 
   itemWidthReal?: number;
@@ -309,7 +309,7 @@ export class VirtualScrollComponent<T>
   }
   public set _itemsPerRow(value: number) {
     if (this.stateRef.itemsPerRow.value !== value) {
-      this.widthService.setItemsPerRow(value);
+      this.itemWidthCalculated.setItemsPerRow(value);
       this.stateRef.itemsPerRow.next(value);
       this.stateRef.itemsPerRowChanged.next(value);
       this.itemsPerRowChange.emit(value);
@@ -335,6 +335,7 @@ export class VirtualScrollComponent<T>
 
   private unsubscribeFromScrollEvent$ = new Subject<void>();
   private unsubscribeFromPointerEvent$ = new Subject<void>();
+  private readonly itemWidthCalculated: ItemWidthCalc;
 
   constructor(
     @Inject(LI_VIRTUAL_SCROLL_STRATEGY)
@@ -342,9 +343,11 @@ export class VirtualScrollComponent<T>
     private readonly renderer: Renderer2,
     private readonly zone: NgZone,
     private readonly cdRef: ChangeDetectorRef,
-    private readonly widthService: ItemWidthService,
+
     { nativeElement: listElement }: ElementRef<HTMLElement>
   ) {
+    this.itemWidthCalculated = new ItemWidthCalc();
+
     effect(() => {
       const autoScrollOnResize = this.autoScrollOnResize();
       const scrollContainer = this._scrollContainer();
@@ -373,70 +376,67 @@ export class VirtualScrollComponent<T>
       }
     });
 
-    effect(
-      () => {
-        const scrollContainer = this._scrollContainer();
-        const listElement = this._listElement();
-        const capture = this.eventCapture();
+    effect(() => {
+      const scrollContainer = this._scrollContainer();
+      const listElement = this._listElement();
+      const capture = this.eventCapture();
 
-        if (scrollContainer && listElement) {
-          this.applyScrollContainerStyles(
-            listElement,
-            scrollContainer === listElement
-          );
+      if (scrollContainer && listElement) {
+        this.applyScrollContainerStyles(
+          listElement,
+          scrollContainer === listElement
+        );
 
-          this.unsubscribeFromScrollEvent$.next();
-          merge(
-            fromEvent<MouseEvent>(scrollContainer, 'scroll', { capture }),
-            this.scrollContainerResize(scrollContainer),
-            of({ x: 0, y: 0 })
+        this.unsubscribeFromScrollEvent$.next();
+        merge(
+          fromEvent<MouseEvent>(scrollContainer, 'scroll', { capture }),
+          this.scrollContainerResize(scrollContainer),
+          of({ x: 0, y: 0 })
+        )
+          .pipe(
+            map(
+              (): ScrollContainerRect => ({
+                left: scrollContainer.scrollLeft,
+                top: scrollContainer.scrollTop,
+                right:
+                  scrollContainer.scrollLeft + this.getUsableContainerWidth(),
+                bottom:
+                  scrollContainer.scrollTop + this.getUsableContainerHeight(),
+              })
+            )
           )
-            .pipe(
-              map(
-                (): ScrollContainerRect => ({
-                  left: scrollContainer.scrollLeft,
-                  top: scrollContainer.scrollTop,
-                  right:
-                    scrollContainer.scrollLeft + this.getUsableContainerWidth(),
-                  bottom:
-                    scrollContainer.scrollTop + this.getUsableContainerHeight(),
-                })
-              )
-            )
-            .pipe(
-              distinctUntilChanged(
-                (prev, cur) =>
-                  prev.left === cur.left &&
-                  prev.top === cur.top &&
-                  prev.right === cur.right &&
-                  prev.bottom === cur.bottom
-              ),
-              takeUntil(this.unsubscribeFromScrollEvent$)
-            )
-            .subscribe((containerBounds) => {
-              // Calculate usable width excluding padding and scrollbar insets
+          .pipe(
+            distinctUntilChanged(
+              (prev, cur) =>
+                prev.left === cur.left &&
+                prev.top === cur.top &&
+                prev.right === cur.right &&
+                prev.bottom === cur.bottom
+            ),
+            takeUntil(this.unsubscribeFromScrollEvent$)
+          )
+          .subscribe((containerBounds) => {
+            // Calculate usable width excluding padding and scrollbar insets
 
-              this.widthService.setScrollContainerWidth(
-                this.getUsableContainerWidth()
-              );
+            this.itemWidthCalculated.setScrollContainerWidth(
+              this.getUsableContainerWidth()
+            );
 
-              this._lastScrollOffset.x =
-                containerBounds.left - this._scrollPosition.x;
-              this._lastScrollOffset.y =
-                containerBounds.top - this._scrollPosition.y;
-              this._scrollPosition = {
-                x: containerBounds.left,
-                y: containerBounds.top,
-              };
-            });
-        }
+            this._lastScrollOffset.x =
+              containerBounds.left - this._scrollPosition.x;
+            this._lastScrollOffset.y =
+              containerBounds.top - this._scrollPosition.y;
+            this._scrollPosition = {
+              x: containerBounds.left,
+              y: containerBounds.top,
+            };
+          });
+      }
 
-        if (scrollContainer) {
-          this.stateRef.setScrollContainer(scrollContainer);
-        }
-      },
-      { allowSignalWrites: true }
-    );
+      if (scrollContainer) {
+        this.stateRef.setScrollContainer(scrollContainer);
+      }
+    });
 
     this._scrollContainer.set(listElement);
     this._listElement.set(listElement);
@@ -637,7 +637,7 @@ export class VirtualScrollComponent<T>
     // Dynamically calculate itemWidth if not explicitly passed as an input
     this.afterViewInit$
       .pipe(
-        withNextFrom(this.widthService.miniumItemWidth),
+        withNextFrom(this.itemWidthCalculated.miniumItemWidth),
         filter(([, itemWidth]) => itemWidth === undefined),
         switchMap(() => this.refItemChange)
       )
@@ -662,7 +662,7 @@ export class VirtualScrollComponent<T>
   ngAfterViewInit(): void {
     this.afterViewInit$.next();
 
-    this.widthService.itemWidth.subscribe((width) => {
+    this.itemWidthCalculated.itemWidth.subscribe((width) => {
       this.itemWidthReal = width;
       this.itemWidthStyle = `${width}px`;
       this.cdRef.markForCheck();
@@ -864,7 +864,7 @@ export class VirtualScrollComponent<T>
       this.scrollDebounce,
       // Listen for list state changes that affect rendering
       this.stateRef.items,
-      this.widthService.miniumItemWidth,
+      this.itemWidthCalculated.miniumItemWidth,
       this.stateRef.itemHeight,
       this.stateRef.scrollContainer,
       this.stateRef.bufferLength,
@@ -1012,7 +1012,7 @@ export class VirtualScrollComponent<T>
 
   ngOnDestroy(): void {
     this.clearViewsSafe();
-
+    this.itemWidthCalculated.destroy();
     this.unsubscribeFromScrollEvent$.next();
     this.unsubscribeFromScrollEvent$.complete();
     this.unsubscribeFromPointerEvent$.next();
