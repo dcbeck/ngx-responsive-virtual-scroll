@@ -4,7 +4,7 @@ describe('Virtual Scroll - Scrolled Through all items E2E Tests', () => {
   const rowHeight = 400;
   const numColumns = 4;
   const numItems = 210;
-  const itemGap = 24;
+  const itemPadding = 24;
 
   const rowShouldHaveAscendingValuesFrom = (
     firstValueInRow: number,
@@ -20,15 +20,14 @@ describe('Virtual Scroll - Scrolled Through all items E2E Tests', () => {
   };
 
   it('renders 200 items in a grid with 3 per row and displays the last cards when scrolled to the bottom', () => {
-    cy.viewport(1600, 820);
+    cy.viewport(1100, 820);
 
     visitState({
       numberOfItems: numItems,
-      maxItemsPerRow: numColumns,
       itemWidth: 240,
       rowHeight: rowHeight,
       stretchItems: true,
-      itemGap: itemGap,
+      itemPadding: itemPadding,
     });
 
     rowShouldHaveAscendingValuesFrom(0, 0);

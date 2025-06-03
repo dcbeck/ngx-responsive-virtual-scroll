@@ -5,10 +5,9 @@ export const getGreeting = () => cy.get('h1');
 export const visitState = (options?: {
   selectedIndex?: number;
   numberOfItems?: number;
-  maxItemsPerRow?: number;
   itemWidth?: number;
   rowHeight?: number;
-  itemGap?: number;
+  itemPadding?: number;
   scrollViewPadding?: number;
   stretchItems?: boolean;
   isGrid?: boolean;
@@ -18,10 +17,10 @@ export const visitState = (options?: {
     getStateUrl({
       selectedIndex: options?.selectedIndex,
       numberOfItems: numItems,
-      maxItemsPerRow: options?.maxItemsPerRow || 3,
+
       itemWidth: options?.itemWidth || 200,
       rowHeight: options?.rowHeight || 200,
-      itemGap: options?.itemGap || 24,
+      itemPadding: options?.itemPadding || 24,
       scrollViewPadding: options?.scrollViewPadding || 24,
       stretchItems:
         options?.stretchItems === undefined ? false : options.stretchItems,
@@ -69,16 +68,52 @@ export const selectGridItem = (index: number) => {
   return cy.get('#grid-item-learn-more-btn-' + index).click();
 };
 
+export const getFirstRowItems = () => {
+  return cy.get('.ngx-scroll-view-grid-item').then(($items) => {
+    const itemsArray = Cypress.$.makeArray($items);
+    if (itemsArray.length === 0) return;
+    const firstY = itemsArray[0].getBoundingClientRect().top;
+    const sameRowItems = itemsArray.filter(
+      (el) => el.getBoundingClientRect().top === firstY
+    );
+    // Wrap the filtered elements as a Cypress chainable
+    cy.wrap(sameRowItems);
+  });
+};
+
+export const getNthRowItems = (rowIndex: number) => {
+  return cy.get('.ngx-scroll-view-grid-item').then(($items) => {
+    const itemsArray = Cypress.$.makeArray($items);
+    if (itemsArray.length === 0) return;
+    // Get all unique Y positions (rows)
+    const yPositions = Array.from(
+      new Set(itemsArray.map((el) => el.getBoundingClientRect().top))
+    ).sort((a, b) => a - b);
+    if (rowIndex < 0 || rowIndex >= yPositions.length) return;
+    const targetY = yPositions[rowIndex];
+    const rowItems = itemsArray.filter(
+      (el) => el.getBoundingClientRect().top === targetY
+    );
+    cy.wrap(rowItems);
+  });
+};
+
 export const shouldHaveNumberOfColumns = (cols: number) => {
-  cy.get('ngx-responsive-virtual-scroll-row:first')
-    .find('demo-grid-item')
-    .should('have.length', cols);
+  getFirstRowItems().should('have.length', cols);
 };
 
 export const getNumberOfVirtualRows = () => {
-  return cy
-    .get('ngx-responsive-virtual-scroll-row')
-    .then(($rows) => $rows.length);
+  return cy.get('.ngx-scroll-view-grid-item').then(($items) => {
+    const itemsArray = Cypress.$.makeArray($items);
+
+    const yValueSet = new Set<number>();
+
+    for (const item of itemsArray) {
+      yValueSet.add(item.getBoundingClientRect().top);
+    }
+
+    return yValueSet.size;
+  });
 };
 
 export const getItemIndexValueAtPosition = (
@@ -99,25 +134,9 @@ export const getItemIndexValueAtPosition = (
 
 export const getItemAtPosition = (colIndex: number, rowIndex: number) => {
   cy.log(`get items at ${colIndex}, ${rowIndex}`);
-  return cy
-    .get('ngx-responsive-virtual-scroll-row')
-    .eq(rowIndex)
-    .find('demo-grid-item')
-    .eq(colIndex);
+  return getNthRowItems(rowIndex).find('demo-grid-item').eq(colIndex);
 };
 
-export const getIndexOfFirstItemInVirtualScrollView = () => {
-  return cy.get('ngx-responsive-virtual-scroll-row').then((scrollView) => {
-    const firstId = scrollView.attr('id');
-    if (firstId === undefined) return 0;
-    const value = firstId.replace('grid-item-', '');
-    const index = parseInt(value);
-    if (Number.isNaN(index)) {
-      throw new Error('could not parse index of value');
-    }
-    return index;
-  });
-};
 
 export const gridItemsShouldExistWithinIndexRange = (
   fromIndex: number,

@@ -1,10 +1,9 @@
 export type StateKey =
   | 'selectedIndex'
   | 'numberOfItems'
-  | 'maxItemsPerRow'
   | 'itemWidth'
   | 'rowHeight'
-  | 'itemGap'
+  | 'itemPadding'
   | 'scrollViewPadding'
   | 'stretchItems'
   | 'isGrid';
