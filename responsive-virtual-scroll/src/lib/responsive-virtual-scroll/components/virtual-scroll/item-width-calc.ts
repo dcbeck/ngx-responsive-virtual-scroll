@@ -1,5 +1,9 @@
-
-import { BehaviorSubject, Observable, ReplaySubject, combineLatest } from 'rxjs';
+import {
+  BehaviorSubject,
+  Observable,
+  ReplaySubject,
+  combineLatest,
+} from 'rxjs';
 
 export class ItemWidthCalc {
   private readonly shouldStretchItems$ = new BehaviorSubject<boolean>(false);
@@ -44,6 +48,12 @@ export class ItemWidthCalc {
           this.setCurrentItemWidth(minItemWidth);
           return;
         }
+
+        if (scrollContainerWidth <= 0) {
+          this.setCurrentItemWidth(minItemWidth);
+          return;
+        }
+
         if (shouldStretchItems && isGrid) {
           const stretchedWidth = Math.floor(
             (scrollContainerWidth - 20) / itemsPerRow

@@ -1,11 +1,5 @@
-import { ChangeDetectorRef, TrackByFunction } from '@angular/core';
-import {
-  BehaviorSubject,
-  combineLatest,
-  debounceTime,
-  ReplaySubject,
-  Subject,
-} from 'rxjs';
+import { TrackByFunction } from '@angular/core';
+import { BehaviorSubject, ReplaySubject, Subject } from 'rxjs';
 import { VirtualScrollState } from './scroll-state/virtual-scroll-state';
 
 const TRACK_BY_IDENTITY_FN = <T>(_index: number, item: T) => item;
@@ -21,7 +15,7 @@ export class VsState<T> {
   public readonly bufferLength = new BehaviorSubject<number>(
     VsState.DEFAULT_BUFFER_LENGTH
   );
-  public readonly gridList = new ReplaySubject<boolean>(1);
+  public readonly gridList = new BehaviorSubject<boolean>(false);
   public readonly trackBy = new BehaviorSubject<TrackByFunction<T>>(
     TRACK_BY_IDENTITY_FN
   );
@@ -33,19 +27,19 @@ export class VsState<T> {
   public readonly minIndex = new BehaviorSubject<number>(0);
   public readonly maxIndex = new BehaviorSubject<number>(0);
   public readonly itemsPerRow = new BehaviorSubject<number>(0);
-  public readonly renderingViews = new ReplaySubject<boolean>(1);
+
   public readonly asyncRendering = new BehaviorSubject<boolean>(false);
   public readonly scrollDebounceMs = new BehaviorSubject<number>(
     VsState.DEFAULT_SCROLL_THROTTLE_MS
   );
 
+  public readonly renderingViews = new ReplaySubject<boolean>(1);
+
   public readonly lastFocusedItem = new BehaviorSubject<T | null>(null);
-  public readonly pointerUpEvent = new ReplaySubject<PointerEvent>(1);
 
   public readonly itemsPerRowChanged = new Subject<number>();
 
   private lastScrollContainer: null | HTMLElement = null;
-
 
   private lastIsRenderingViews = false;
   setIsRenderingView(isRenderingViews: boolean) {
@@ -66,23 +60,6 @@ export class VsState<T> {
     }
   }
 
-  setCdr(cdr: ChangeDetectorRef) {
-    combineLatest([
-      this.items,
-      this.itemHeight,
-      this.gridList,
-      this.bufferLength,
-      this.asyncRendering,
-      this.scrollDebounceMs,
-      this.trackBy,
-    ])
-      .pipe(debounceTime(50))
-      .subscribe(() => {
-        cdr.markForCheck();
-        cdr.detectChanges();
-      });
-  }
-
   destroy() {
     this.items.complete();
     this.itemHeight.complete();
@@ -101,6 +78,5 @@ export class VsState<T> {
     this.scrollDebounceMs.complete();
     this.lastFocusedItem.complete();
     this.itemsPerRowChanged.complete();
-    this.pointerUpEvent.complete();
   }
 }

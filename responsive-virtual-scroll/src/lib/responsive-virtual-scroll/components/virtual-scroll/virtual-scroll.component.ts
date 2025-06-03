@@ -163,6 +163,9 @@ export class VirtualScrollComponent<T>
 
   @Input() set items(value: T[]) {
     this.stateRef.items.next(value);
+    setTimeout(() => {
+      this.cdr.markForCheck();
+    }, 100);
   }
   get items(): T[] {
     return this.stateRef.items.value;
@@ -202,12 +205,14 @@ export class VirtualScrollComponent<T>
   }
 
   itemWidthReal?: number;
+
   @HostBinding('style.--item-width')
   itemWidthStyle = '100%';
 
   @Input() set rowHeight(value: number | undefined) {
     this.stateRef.itemHeight.next(value);
     this.itemHeightReal = value;
+    this.cdr.markForCheck();
   }
   get rowHeight(): number | undefined {
     return this.stateRef.itemHeight.value;
@@ -316,11 +321,6 @@ export class VirtualScrollComponent<T>
     }
   }
 
-  @HostBinding('style.--item-rows-selector')
-  get itemRowsSelectorVar(): string {
-    return `${this._itemsPerRow}n + 1`;
-  }
-
   public get _renderingViews(): boolean {
     return this.stateRef.getRenderingViewsValue();
   }
@@ -347,9 +347,6 @@ export class VirtualScrollComponent<T>
     { nativeElement: listElement }: ElementRef<HTMLElement>
   ) {
     this.itemWidthCalculated = new ItemWidthCalc();
-
-
-    this.stateRef.setCdr(cdr);
 
     effect(() => {
       const autoScrollOnResize = this.autoScrollOnResize();
@@ -393,7 +390,13 @@ export class VirtualScrollComponent<T>
         this.unsubscribeFromScrollEvent$.next();
         merge(
           fromEvent<MouseEvent>(scrollContainer, 'scroll', { capture }),
-          this.scrollContainerResize(scrollContainer),
+          this.scrollContainerResize(scrollContainer).pipe(
+            tap(() => {
+              this.itemWidthCalculated.setScrollContainerWidth(
+                this.getUsableContainerWidth()
+              );
+            })
+          ),
           of({ x: 0, y: 0 })
         )
           .pipe(
@@ -419,12 +422,6 @@ export class VirtualScrollComponent<T>
             takeUntil(this.unsubscribeFromScrollEvent$)
           )
           .subscribe((containerBounds) => {
-            // Calculate usable width excluding padding and scrollbar insets
-
-            this.itemWidthCalculated.setScrollContainerWidth(
-              this.getUsableContainerWidth()
-            );
-
             this._lastScrollOffset.x =
               containerBounds.left - this._scrollPosition.x;
             this._lastScrollOffset.y =
@@ -433,8 +430,6 @@ export class VirtualScrollComponent<T>
               x: containerBounds.left,
               y: containerBounds.top,
             };
-
-            this.cdr.detectChanges();
           });
       }
 
@@ -670,7 +665,7 @@ export class VirtualScrollComponent<T>
     this.itemWidthCalculated.itemWidth.subscribe((width) => {
       this.itemWidthReal = width;
       this.itemWidthStyle = `${width}px`;
-      this.cdr.detectChanges();
+      this.cdr.markForCheck();
     });
 
     this.subscribeToAutoscrollEvents();
@@ -695,7 +690,7 @@ export class VirtualScrollComponent<T>
                   const style = getComputedStyle(this.scrollContainer);
                   const paddingTop = parseFloat(style.paddingTop) || 0;
                   this.scrollContainer.scrollTop = scrollTop + paddingTop;
-                  this.cdr.detectChanges();
+                  this.cdr.markForCheck();
                 }
               }
             }
