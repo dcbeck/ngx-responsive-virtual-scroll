@@ -96,7 +96,6 @@ export class DemoStateService {
   }
 
   updateDataByParmMap(paramMap: ParamMap) {
-    console.log(paramMap);
     const selectedIndex = this.extractInt(paramMap, 'selectedIndex');
     if (selectedIndex !== null) {
       const data = this.data();

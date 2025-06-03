@@ -666,7 +666,6 @@ export class VirtualScrollComponent<T>
       this.itemWidthReal = width;
       this.itemWidthStyle = `${width}px`;
       this.cdRef.markForCheck();
-      console.log(width);
     });
 
     this.subscribeToAutoscrollEvents();

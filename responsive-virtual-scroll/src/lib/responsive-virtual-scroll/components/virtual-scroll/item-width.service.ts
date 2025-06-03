@@ -55,8 +55,6 @@ export class ItemWidthService {
     if (this.lastItemWidth !== width) {
       this.lastItemWidth = width;
       this.itemWidthObservable.next(width);
-
-      console.log('CurrentItemWidth', width);
     }
   }
 
