@@ -8,10 +8,10 @@ import { ScrollGridItem, StateKey } from './types';
 export class DemoStateService {
   selectedItem = signal<ScrollGridItem | null>(null);
   numberOfItems = signal<number>(500);
-  maxItemsPerRow = signal<number>(6);
+
   itemWidth = signal<number>(300);
   rowHeight = signal<number>(280);
-  itemGap = signal<number>(24);
+  itemPadding = signal<number>(24);
   scrollViewPadding = signal<number>(24);
   stretchItems = signal<boolean>(false);
   isGrid = signal<boolean>(true);
@@ -39,7 +39,7 @@ export class DemoStateService {
   constructor(private readonly router: Router) {
     effect(
       () => {
-        const state = `${this.maxItemsPerRow()}_${this.itemWidth()}_${this.rowHeight()}_${this.itemGap()}_${this.scrollViewPadding()}_${this.stretchItems()}_${this.isGrid()}`;
+        const state = `${this.itemWidth()}_${this.rowHeight()}_${this.itemPadding()}_${this.scrollViewPadding()}_${this.stretchItems()}_${this.isGrid()}`;
 
         if (this.gridData$.value !== state) {
           this.isGridVisible.set(false);
@@ -57,10 +57,9 @@ export class DemoStateService {
           queryParams: {
             selectedIndex: selectedItem ? selectedItem.index : -1,
             numberOfItems: this.numberOfItems(),
-            maxItemsPerRow: this.maxItemsPerRow(),
             itemWidth: this.itemWidth(),
             rowHeight: this.rowHeight(),
-            itemGap: this.itemGap(),
+            itemPadding: this.itemPadding(),
             scrollViewPadding: this.scrollViewPadding(),
             stretchItems: this.stretchItems(),
             isGrid: this.isGrid(),
@@ -117,14 +116,6 @@ export class DemoStateService {
       this.numberOfItems.set(500);
     }
 
-    const maxItemsPerRow = this.extractInt(paramMap, 'maxItemsPerRow');
-    console.log('set maxItemsPerRow', maxItemsPerRow);
-    if (maxItemsPerRow !== null && maxItemsPerRow >= 0) {
-      this.maxItemsPerRow.set(maxItemsPerRow);
-    } else {
-      this.maxItemsPerRow.set(6);
-    }
-
     const itemWidth = this.extractInt(paramMap, 'itemWidth');
     if (itemWidth !== null && itemWidth >= 0) {
       this.itemWidth.set(itemWidth);
@@ -140,11 +131,11 @@ export class DemoStateService {
       this.rowHeight.set(280);
     }
 
-    const itemGap = this.extractInt(paramMap, 'itemGap');
-    if (itemGap !== null && itemGap >= 0) {
-      this.itemGap.set(itemGap);
+    const itemPadding = this.extractInt(paramMap, 'itemPadding');
+    if (itemPadding !== null && itemPadding >= 0) {
+      this.itemPadding.set(itemPadding);
     } else {
-      this.itemGap.set(24);
+      this.itemPadding.set(24);
     }
 
     const scrollViewPadding = this.extractInt(paramMap, 'scrollViewPadding');

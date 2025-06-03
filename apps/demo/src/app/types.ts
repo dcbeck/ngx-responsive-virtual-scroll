@@ -4,7 +4,7 @@ export type StateKey =
   | 'maxItemsPerRow'
   | 'itemWidth'
   | 'rowHeight'
-  | 'itemGap'
+  | 'itemPadding'
   | 'scrollViewPadding'
   | 'stretchItems'
   | 'isGrid';

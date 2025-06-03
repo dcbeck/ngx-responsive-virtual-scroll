@@ -60,7 +60,7 @@ import { ScrollGridItem } from './types';
         This item is in row {{ row() }} and in column {{ column() }}
       </p>
       <button
-        class="w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600 transition flex-shrink-0 truncate"
+        class="w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600 transition flex-shrink-0 truncate cursor-pointer"
         (click)="selectItem()"
         (pointerup)="selectItem()"
         [id]="buttonId()"
@@ -73,14 +73,18 @@ import { ScrollGridItem } from './types';
 export class GridItemComponent {
   type = input<'list' | 'grid'>('grid');
   item = input.required<ScrollGridItem>();
-  row = input<number>(0);
-  column = input<number>(0);
+  index = input<number>(0);
+  itemsPerRow = input<number>(1);
+
   isSelected = input<boolean>(false);
   isSelectedChange = output<boolean>();
 
   buttonId = computed(() => `grid-item-learn-more-btn-${this.item().index}`);
   headingId = computed(() => `grid-item-heading-${this.item().index}`);
   starId = computed(() => `grid-item-star-${this.item().index}`);
+
+  row = computed(() => Math.floor(this.index() / this.itemsPerRow()));
+  column = computed(() => this.index() % this.itemsPerRow());
 
   @HostBinding('class') hostClasses = '';
 

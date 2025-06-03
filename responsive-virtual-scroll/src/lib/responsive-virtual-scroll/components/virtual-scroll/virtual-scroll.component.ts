@@ -34,6 +34,7 @@ import {
   of,
   ReplaySubject,
   Subject,
+  lastValueFrom,
 } from 'rxjs';
 import {
   throttleTime,
@@ -49,7 +50,6 @@ import {
   skip,
   take,
   takeUntil,
-  debounceTime,
 } from 'rxjs/operators';
 import { VirtualItem } from '../../directives/virtual-item.directive';
 import { VirtualPlaceholder } from '../../directives/virtual-placeholder.directive';
@@ -60,8 +60,9 @@ import { LI_VIRTUAL_SCROLL_STATE } from './scroll-state/virtual-scroll-state.tok
 import { withNextFrom } from '../../operators/with-next-from';
 import { delayUntil } from '../../operators/delay-until';
 import { VsState } from './vs-state';
+import { ItemWidthService } from './item-width.service';
 
-export interface Rect {
+export interface ScrollContainerRect {
   left: number;
   top: number;
   right: number;
@@ -131,10 +132,16 @@ export interface ScrollViewPadding {
         display: inline-flex !important;
         width: var(--item-width);
         height: var(--item-height);
+        min-width: var(--item-width);
+        min-height: var(--item-height);
+        max-width: var(--item-width);
+        max-height: var(--item-height);
       }
 
       .ngx-scroll-view-list-item {
         height: var(--item-height);
+        max-height: var(--item-height);
+        min-height: var(--item-height);
       }
     `,
   ],
@@ -146,8 +153,13 @@ export class VirtualScrollComponent<T>
 
   private readonly stateRef = new VsState<T>();
 
+  private readonly destroy$ = new Subject<void>();
+
   @Output()
   public readonly renderedItemsChange = new EventEmitter<T[]>();
+
+  @Output()
+  public readonly itemsPerRowChange = new EventEmitter<number>();
 
   @Input() set items(value: T[]) {
     this.stateRef.items.next(value);
@@ -160,10 +172,14 @@ export class VirtualScrollComponent<T>
     this.gridList = listType === 'grid';
   }
 
+  @Input() set stretchItems(isStretch: boolean) {
+    this.widthService.setShouldStretchItems(isStretch);
+  }
+
   set gridList(value: boolean) {
     this.stateRef.gridList.next(value);
     this.isGridList = value;
-    this.cdRef.markForCheck();
+    this.widthService.setIsGrid(value);
   }
   get gridList(): boolean {
     return this.isGridList;
@@ -181,31 +197,26 @@ export class VirtualScrollComponent<T>
 
   autoScrollOnResize = input(false);
 
-  @Input() set itemWidth(value: number | undefined) {
-    this.stateRef.itemWidth.next(value);
-    this.itemWidthReal = value;
-  }
-  get itemWidth(): number | undefined {
-    return this.stateRef.itemWidth.value;
-  }
-  itemWidthReal?: number;
-  @HostBinding('style.--item-width')
-  get itemWidthVar(): string {
-    return `${this.itemWidth}px`;
+  @Input() set gridItemWidth(value: number | undefined) {
+    this.widthService.setInputItemWidth(value ?? 0);
   }
 
-  @Input() set itemHeight(value: number | undefined) {
+  itemWidthReal?: number;
+  @HostBinding('style.--item-width')
+  itemWidthStyle = '100%';
+
+  @Input() set rowHeight(value: number | undefined) {
     this.stateRef.itemHeight.next(value);
     this.itemHeightReal = value;
   }
-  get itemHeight(): number | undefined {
+  get rowHeight(): number | undefined {
     return this.stateRef.itemHeight.value;
   }
   itemHeightReal?: number;
 
   @HostBinding('style.--item-height')
   get itemHeightVar(): string {
-    return `${this.itemHeight}px`;
+    return `${this.rowHeight}px`;
   }
 
   @Input() set scrollDebounceMs(value: number) {
@@ -298,8 +309,10 @@ export class VirtualScrollComponent<T>
   }
   public set _itemsPerRow(value: number) {
     if (this.stateRef.itemsPerRow.value !== value) {
+      this.widthService.setItemsPerRow(value);
       this.stateRef.itemsPerRow.next(value);
       this.stateRef.itemsPerRowChanged.next(value);
+      this.itemsPerRowChange.emit(value);
     }
   }
 
@@ -329,6 +342,7 @@ export class VirtualScrollComponent<T>
     private readonly renderer: Renderer2,
     private readonly zone: NgZone,
     private readonly cdRef: ChangeDetectorRef,
+    private readonly widthService: ItemWidthService,
     { nativeElement: listElement }: ElementRef<HTMLElement>
   ) {
     effect(() => {
@@ -336,78 +350,94 @@ export class VirtualScrollComponent<T>
       const scrollContainer = this._scrollContainer();
       this.unsubscribeFromPointerEvent$.next();
       if (autoScrollOnResize && scrollContainer) {
-        fromEvent<MouseEvent>(scrollContainer, 'pointerup')
+        fromEvent<PointerEvent>(scrollContainer, 'pointerdown')
           .pipe(takeUntil(this.unsubscribeFromPointerEvent$))
           .subscribe((event) => {
             const target = event.target as HTMLElement;
-
-            const renderViews = Array.from(this.renderedViews.values())
-              .map((view) => view.viewRef.rootNodes?.[0])
-              .filter((ref) => !!ref);
-
+            const renderViews: Element[] = [];
+            const itemValues: T[] = [];
+            for (let index = 0; index < this.renderedViews.length; index++) {
+              const view = this.renderedViews[index];
+              const rootNode = view.viewRef.rootNodes?.[0];
+              if (rootNode && rootNode instanceof Element && view.item) {
+                renderViews[index] = rootNode;
+                itemValues[index] = view.item;
+              }
+            }
             const index = renderViews.findIndex((el) => el.contains(target));
-
-            if (index > 0 && index < this.renderedItems.length) {
-              this.stateRef.lastFocusedItem.next(this._renderedItems[index]);
+            if (index > 0 && index < itemValues.length) {
+              this.stateRef.lastFocusedItem.next(itemValues[index]);
             }
           });
       }
     });
 
-    effect(() => {
-      const scrollContainer = this._scrollContainer();
-      const listElement = this._listElement();
-      const capture = this.eventCapture();
+    effect(
+      () => {
+        const scrollContainer = this._scrollContainer();
+        const listElement = this._listElement();
+        const capture = this.eventCapture();
 
-      if (scrollContainer && listElement) {
-        this.applyScrollContainerStyles(
-          listElement,
-          scrollContainer === listElement
-        );
+        if (scrollContainer && listElement) {
+          this.applyScrollContainerStyles(
+            listElement,
+            scrollContainer === listElement
+          );
 
-        this.unsubscribeFromScrollEvent$.next();
-        merge(
-          fromEvent<MouseEvent>(scrollContainer, 'scroll', { capture }),
-          this.scrollContainerResize(scrollContainer),
-          of({ x: 0, y: 0 })
-        )
-          .pipe(
-            map(
-              (): Rect => ({
-                left: scrollContainer.scrollLeft,
-                top: scrollContainer.scrollTop,
-                right: scrollContainer.scrollLeft + scrollContainer.clientWidth,
-                bottom:
-                  scrollContainer.scrollTop + scrollContainer.clientHeight,
-              })
+          this.unsubscribeFromScrollEvent$.next();
+          merge(
+            fromEvent<MouseEvent>(scrollContainer, 'scroll', { capture }),
+            this.scrollContainerResize(scrollContainer),
+            of({ x: 0, y: 0 })
+          )
+            .pipe(
+              map(
+                (): ScrollContainerRect => ({
+                  left: scrollContainer.scrollLeft,
+                  top: scrollContainer.scrollTop,
+                  right:
+                    scrollContainer.scrollLeft + scrollContainer.clientWidth,
+                  bottom:
+                    scrollContainer.scrollTop + scrollContainer.clientHeight,
+                })
+              )
             )
-          )
-          .pipe(
-            distinctUntilChanged(
-              (prev, cur) =>
-                prev.left === cur.left &&
-                prev.top === cur.top &&
-                prev.right === cur.right &&
-                prev.bottom === cur.bottom
-            ),
-            takeUntil(this.unsubscribeFromScrollEvent$)
-          )
-          .subscribe((containerBounds) => {
-            this._lastScrollOffset.x =
-              containerBounds.left - this._scrollPosition.x;
-            this._lastScrollOffset.y =
-              containerBounds.top - this._scrollPosition.y;
-            this._scrollPosition = {
-              x: containerBounds.left,
-              y: containerBounds.top,
-            };
-          });
-      }
+            .pipe(
+              distinctUntilChanged(
+                (prev, cur) =>
+                  prev.left === cur.left &&
+                  prev.top === cur.top &&
+                  prev.right === cur.right &&
+                  prev.bottom === cur.bottom
+              ),
+              takeUntil(this.unsubscribeFromScrollEvent$)
+            )
+            .subscribe((containerBounds) => {
+              // Calculate usable width excluding padding and scrollbar insets
+              const style = getComputedStyle(scrollContainer);
+              const paddingLeft = parseFloat(style.paddingLeft) || 0;
+              const paddingRight = parseFloat(style.paddingRight) || 0;
+              const usableWidth =
+                scrollContainer.clientWidth - paddingLeft - paddingRight;
+              this.widthService.setScrollContainerWidth(usableWidth);
 
-      if (scrollContainer) {
-        this.stateRef.setScrollContainer(scrollContainer);
-      }
-    });
+              this._lastScrollOffset.x =
+                containerBounds.left - this._scrollPosition.x;
+              this._lastScrollOffset.y =
+                containerBounds.top - this._scrollPosition.y;
+              this._scrollPosition = {
+                x: containerBounds.left,
+                y: containerBounds.top,
+              };
+            });
+        }
+
+        if (scrollContainer) {
+          this.stateRef.setScrollContainer(scrollContainer);
+        }
+      },
+      { allowSignalWrites: true }
+    );
 
     this._scrollContainer.set(listElement);
     this._listElement.set(listElement);
@@ -415,11 +445,13 @@ export class VirtualScrollComponent<T>
     // Clear all views if the trackBy changes
     this.stateRef.trackBy
       .pipe(switchMap(() => this.clearViewsSafe()))
+      .pipe(takeUntil(this.destroy$))
       .subscribe();
 
     // Clean the view cache when the list of items changes
     this.stateRef.items
       .pipe(switchMap(() => this.waitForRenderComplete))
+      .pipe(takeUntil(this.destroy$))
       .subscribe(() => this.cleanViewCache());
 
     // Clear views and recalculate item size if changing grid list view state
@@ -430,6 +462,7 @@ export class VirtualScrollComponent<T>
         delay(0), // Wait for any DOM updates to occur
         switchMap(() => this.clearViewsSafe())
       )
+      .pipe(takeUntil(this.destroy$))
       .subscribe(() => this.recalculateItemSize());
 
     // Clear the view cache if disabled
@@ -438,6 +471,7 @@ export class VirtualScrollComponent<T>
         distinctUntilChanged(),
         filter((viewCache) => !viewCache)
       )
+      .pipe(takeUntil(this.destroy$))
       .subscribe(() => this.clearCachedViews());
 
     // Clear all views and stop listening for scrolls on destroy
@@ -506,6 +540,7 @@ export class VirtualScrollComponent<T>
           }
         })
       )
+      .pipe(takeUntil(this.destroy$))
       .subscribe((renderedViews) => {
         if (this.viewContainerRef.length !== renderedViews.length) {
           console.warn(
@@ -521,28 +556,29 @@ export class VirtualScrollComponent<T>
       .pipe(
         switchMap(() => this.scrollStateChange),
         // Skip updates if we're ignoring scroll updates or item info isn't defined
-        filter(([, , itemWidth, itemHeight, scrollContainer]) => {
+        filter(([, , minItemWidth, itemHeight, scrollContainer]) => {
           return (
             !this.renderingViews &&
-            (!!itemWidth || !this.gridList) &&
+            (!!minItemWidth || !this.gridList) &&
             !!itemHeight &&
             scrollContainer.clientWidth > 0 &&
             scrollContainer.clientHeight > 0
           );
         })
       )
+      .pipe(takeUntil(this.destroy$))
       .subscribe(
         ([
           scrollPosition,
           items,
-          itemWidth,
+          minItemWidth,
           itemHeight,
           scrollContainer,
           bufferLength,
           gridList,
         ]) => {
           // The bounds of the scroll container, in pixels
-          const renderedBounds: Rect = {
+          const renderedBounds: ScrollContainerRect = {
             left: scrollPosition.x,
             top: scrollPosition.y,
             right: scrollPosition.x + scrollContainer.clientWidth,
@@ -552,9 +588,12 @@ export class VirtualScrollComponent<T>
 
           // Calculate the number of rendered items per row
 
-          const itemsPerRow = gridList
-            ? Math.floor(scrollContainer.clientWidth / itemWidth!)
-            : 1;
+          const itemsPerRow = Math.max(
+            1,
+            gridList
+              ? Math.floor(scrollContainer.clientWidth / minItemWidth!)
+              : 1
+          );
           const virtualScrollHeight =
             (items.length * itemHeight!) / itemsPerRow;
 
@@ -608,12 +647,13 @@ export class VirtualScrollComponent<T>
     // Dynamically calculate itemWidth if not explicitly passed as an input
     this.afterViewInit$
       .pipe(
-        withNextFrom(this.stateRef.itemWidth),
+        withNextFrom(this.widthService.miniumItemWidth),
         filter(([, itemWidth]) => itemWidth === undefined),
         switchMap(() => this.refItemChange)
       )
+      .pipe(takeUntil(this.destroy$))
       .subscribe(
-        (refItem) => (this.itemWidth = this.calculateItemWidth(refItem))
+        (refItem) => (this.gridItemWidth = this.calculateItemWidth(refItem))
       );
 
     // Dynamically calculate itemHeight if not explicitly passed as an input
@@ -623,40 +663,48 @@ export class VirtualScrollComponent<T>
         filter(([, itemHeight]) => itemHeight === undefined),
         switchMap(() => this.refItemChange)
       )
+      .pipe(takeUntil(this.destroy$))
       .subscribe(
-        (refItem) => (this.itemHeight = this.calculateItemHeight(refItem))
+        (refItem) => (this.rowHeight = this.calculateItemHeight(refItem))
       );
   }
 
   ngAfterViewInit(): void {
     this.afterViewInit$.next();
 
-    //TODO
+    this.widthService.itemWidth.subscribe((width) => {
+      this.itemWidthReal = width;
+      this.itemWidthStyle = `${width}px`;
+      this.cdRef.markForCheck();
+      console.log(width);
+    });
+
+    this.subscribeToAutoscrollEvents();
+  }
+
+  private subscribeToAutoscrollEvents() {
     if (this.autoScrollOnResize()) {
-      this.stateRef.lastFocusedItem
-        .pipe(
-          distinctUntilChanged(),
+      this.stateRef.itemsPerRowChanged
+        .pipe(distinctUntilChanged(), takeUntil(this.destroy$))
+        .subscribe(async (itemsPerRow) => {
+          const item = this.stateRef.lastFocusedItem.value;
 
-          switchMap((item: T) => {
-            return this.stateRef.itemsPerRowChanged.pipe(
-              map((itemsPerRow) => ({ itemsPerRow, item }))
-            );
-          }),
-          debounceTime(50)
-        )
-        .subscribe((data) => {
-          // Scroll to the last focused item if it exists
-          const { item, itemsPerRow } = data;
-          const index = this.items.indexOf(item);
-          if (index >= 0) {
-            if (this.scrollContainer && this.itemHeightReal != null) {
-              const row = Math.floor(index / itemsPerRow);
-              const scrollTop = row * this.itemHeightReal;
+          await lastValueFrom(this.waitForRenderComplete.pipe(take(1)));
+          setTimeout(() => {
+            if (item) {
+              const index = this.items.indexOf(item);
 
-              this.scrollContainer.scrollTop = scrollTop;
-              this.cdRef.markForCheck();
+              if (index >= 0) {
+                if (this.scrollContainer && this.itemHeightReal != null) {
+                  const row = Math.floor(index / itemsPerRow);
+                  const scrollTop = row * this.itemHeightReal;
+
+                  this.scrollContainer.scrollTop = scrollTop;
+                  this.cdRef.markForCheck();
+                }
+              }
             }
-          }
+          }, 30);
         });
     }
   }
@@ -774,7 +822,7 @@ export class VirtualScrollComponent<T>
       this.scrollDebounce,
       // Listen for list state changes that affect rendering
       this.stateRef.items,
-      this.stateRef.itemWidth,
+      this.widthService.miniumItemWidth,
       this.stateRef.itemHeight,
       this.stateRef.scrollContainer,
       this.stateRef.bufferLength,
@@ -916,12 +964,16 @@ export class VirtualScrollComponent<T>
 
   ngOnDestroy(): void {
     this.clearViewsSafe();
-    this.stateRef.destroy();
+
     this.unsubscribeFromScrollEvent$.next();
     this.unsubscribeFromScrollEvent$.complete();
     this.unsubscribeFromPointerEvent$.next();
     this.unsubscribeFromPointerEvent$.complete();
     this.onDestroy$.next();
     this.onDestroy$.complete();
+    this.itemsPerRowChange.complete();
+    this.stateRef.destroy();
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 }

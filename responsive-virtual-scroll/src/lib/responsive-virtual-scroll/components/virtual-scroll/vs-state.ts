@@ -8,9 +8,6 @@ export class VsState<T> {
   private static readonly DEFAULT_SCROLL_THROTTLE_MS = 50;
 
   public readonly items = new BehaviorSubject<T[]>([]);
-  public readonly itemWidth = new BehaviorSubject<number | undefined>(
-    undefined
-  );
   public readonly itemHeight = new BehaviorSubject<number | undefined>(
     undefined
   );
@@ -36,7 +33,9 @@ export class VsState<T> {
     VsState.DEFAULT_SCROLL_THROTTLE_MS
   );
 
-  public readonly lastFocusedItem = new ReplaySubject<T>(1);
+  public readonly lastFocusedItem = new BehaviorSubject<T | null>(null);
+  public readonly pointerUpEvent = new ReplaySubject<PointerEvent>(1);
+
   public readonly itemsPerRowChanged = new Subject<number>();
 
   private lastScrollContainer: null | HTMLElement = null;
@@ -62,7 +61,6 @@ export class VsState<T> {
 
   destroy() {
     this.items.complete();
-    this.itemWidth.complete();
     this.itemHeight.complete();
     this.scrollContainer.complete();
     this.bufferLength.complete();
@@ -79,5 +77,6 @@ export class VsState<T> {
     this.scrollDebounceMs.complete();
     this.lastFocusedItem.complete();
     this.itemsPerRowChanged.complete();
+    this.pointerUpEvent.complete();
   }
 }

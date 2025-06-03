@@ -6,6 +6,7 @@ import {
   computed,
   HostListener,
   OnInit,
+  signal,
   TrackByFunction,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
@@ -59,7 +60,11 @@ export class DemoComponent implements OnInit {
   isSettingsMenuShownInMobile = false;
   private mobileBreakpoint = 768 + 200;
 
-  itemPadding = computed(() => this.state.itemGap() / 2.0);
+
+  itemsPerRow = signal(1);
+
+  itemPadding = computed(() => this.state.itemPadding() / 2.0);
+  scrollPadding = computed(() => this.state.scrollViewPadding() / 2.0);
 
   @HostListener('window:resize', ['$event'])
   onResize(event: Event) {

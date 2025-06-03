@@ -8,6 +8,7 @@ import { LI_VIRTUAL_SCROLL_STRATEGY } from './components/virtual-scroll/scroll-s
 import { DefaultVirtualScrollStrategy } from './components/virtual-scroll/scroll-strategy/default-virtual-scroll-strategy';
 import { VirtualScrollStrategy } from './components/virtual-scroll/scroll-strategy/virtual-scroll-strategy';
 import { VirtualScrollComponent } from './components/virtual-scroll/virtual-scroll.component';
+import { ItemWidthService } from './components/virtual-scroll/item-width.service';
 
 const EXPORTS = [VirtualScrollComponent, VirtualItem, VirtualPlaceholder];
 
@@ -18,6 +19,7 @@ const EXPORTS = [VirtualScrollComponent, VirtualItem, VirtualPlaceholder];
       provide: LI_VIRTUAL_SCROLL_STRATEGY,
       useClass: DefaultVirtualScrollStrategy,
     },
+    ItemWidthService
   ],
   declarations: EXPORTS,
   exports: EXPORTS,
