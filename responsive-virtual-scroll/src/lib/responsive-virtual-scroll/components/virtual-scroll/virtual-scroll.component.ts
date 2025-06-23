@@ -162,7 +162,7 @@ export class VirtualScrollComponent<T>
   public readonly itemsPerRowChange = new EventEmitter<number>();
 
   @Input() set items(value: T[]) {
-    this.stateRef.items.next(value);
+    this.stateRef.items.next(this.deepCopy(value));
   }
   get items(): T[] {
     return this.stateRef.items.value;
@@ -208,8 +208,10 @@ export class VirtualScrollComponent<T>
 
   @Input() set rowHeight(value: number | undefined) {
     this.stateRef.itemHeight.next(value);
-    this.itemHeightReal = value;
-    this.cdr.markForCheck();
+    setTimeout(() => {
+      this.itemHeightReal = value;
+      this.cdr.markForCheck();
+    });
   }
   get rowHeight(): number | undefined {
     return this.stateRef.itemHeight.value;
@@ -218,7 +220,7 @@ export class VirtualScrollComponent<T>
 
   @HostBinding('style.--item-height')
   get itemHeightVar(): string {
-    return `${this.rowHeight}px`;
+    return `${this.itemHeightReal}px`;
   }
 
   @Input() set scrollDebounceMs(value: number) {
@@ -663,9 +665,11 @@ export class VirtualScrollComponent<T>
       });
 
     this.itemWidthCalculated.itemWidth.subscribe((width) => {
-      this.itemWidthReal = width;
-      this.itemWidthStyle = `${width}px`;
-      this.cdr.markForCheck();
+      setTimeout(() => {
+        this.itemWidthReal = width;
+        this.itemWidthStyle = `${width}px`;
+        this.cdr.markForCheck();
+      });
     });
 
     this.subscribeToAutoscrollEvents();
@@ -684,7 +688,11 @@ export class VirtualScrollComponent<T>
               const index = this.items.indexOf(item);
 
               if (index >= 0) {
-                if (this.scrollContainer && this.itemHeightReal != null) {
+                if (
+                  this.scrollContainer &&
+                  this.itemHeightReal != null &&
+                  this.itemHeightReal !== undefined
+                ) {
                   const row = Math.floor(index / itemsPerRow);
                   const scrollTop = row * this.itemHeightReal;
                   const style = getComputedStyle(this.scrollContainer);
@@ -1008,6 +1016,13 @@ export class VirtualScrollComponent<T>
 
     this.viewContainerRef.clear();
     this._renderedViews = new Map();
+  }
+
+  private deepCopy<T>(object: any): T {
+    if (typeof structuredClone === 'function') {
+      return structuredClone(object);
+    }
+    return JSON.parse(JSON.stringify(object)) as T;
   }
 
   ngOnDestroy(): void {
