@@ -54,7 +54,7 @@ import {
 import { VirtualItem } from '../../directives/virtual-item.directive';
 import { VirtualPlaceholder } from '../../directives/virtual-placeholder.directive';
 import { VirtualScrollStrategy } from './scroll-strategy/virtual-scroll-strategy';
-import { LI_VIRTUAL_SCROLL_STRATEGY } from './scroll-strategy/virtual-scroll-strategy.token';
+import { NGX_VIRTUAL_SCROLL_STRATEGY } from './scroll-strategy/virtual-scroll-strategy.token';
 import { VirtualScrollState } from './scroll-state/virtual-scroll-state';
 import { LI_VIRTUAL_SCROLL_STATE } from './scroll-state/virtual-scroll-state.token';
 import { withNextFrom } from '../../operators/with-next-from';
@@ -338,7 +338,7 @@ export class VirtualScrollComponent<T>
   private readonly itemWidthCalculated: ItemWidthCalc;
 
   constructor(
-    @Inject(LI_VIRTUAL_SCROLL_STRATEGY)
+    @Inject(NGX_VIRTUAL_SCROLL_STRATEGY)
     private readonly scrollStrategy: VirtualScrollStrategy<T>,
     private readonly renderer: Renderer2,
     private readonly zone: NgZone,
@@ -387,50 +387,7 @@ export class VirtualScrollComponent<T>
           scrollContainer === listElement
         );
 
-        this.unsubscribeFromScrollEvent$.next();
-        merge(
-          fromEvent<MouseEvent>(scrollContainer, 'scroll', { capture }),
-          this.scrollContainerResize(scrollContainer).pipe(
-            tap(() => {
-              this.itemWidthCalculated.setScrollContainerWidth(
-                this.getUsableContainerWidth()
-              );
-            })
-          ),
-          of({ x: 0, y: 0 })
-        )
-          .pipe(
-            map(
-              (): ScrollContainerRect => ({
-                left: scrollContainer.scrollLeft,
-                top: scrollContainer.scrollTop,
-                right:
-                  scrollContainer.scrollLeft + this.getUsableContainerWidth(),
-                bottom:
-                  scrollContainer.scrollTop + this.getUsableContainerHeight(),
-              })
-            )
-          )
-          .pipe(
-            distinctUntilChanged(
-              (prev, cur) =>
-                prev.left === cur.left &&
-                prev.top === cur.top &&
-                prev.right === cur.right &&
-                prev.bottom === cur.bottom
-            ),
-            takeUntil(this.unsubscribeFromScrollEvent$)
-          )
-          .subscribe((containerBounds) => {
-            this._lastScrollOffset.x =
-              containerBounds.left - this._scrollPosition.x;
-            this._lastScrollOffset.y =
-              containerBounds.top - this._scrollPosition.y;
-            this._scrollPosition = {
-              x: containerBounds.left,
-              y: containerBounds.top,
-            };
-          });
+        this.listenToMouseEventsFromScrollContainer(scrollContainer, capture);
       }
 
       if (scrollContainer) {
@@ -640,6 +597,51 @@ export class VirtualScrollComponent<T>
       .subscribe(
         (refItem) => (this.rowHeight = this.calculateItemHeight(refItem))
       );
+  }
+
+  private listenToMouseEventsFromScrollContainer(
+    scrollContainer: HTMLElement,
+    capture: boolean
+  ) {
+    this.unsubscribeFromScrollEvent$.next();
+    merge(
+      fromEvent<MouseEvent>(scrollContainer, 'scroll', { capture }),
+      this.scrollContainerResize(scrollContainer).pipe(
+        tap(() => {
+          this.itemWidthCalculated.setScrollContainerWidth(
+            this.getUsableContainerWidth()
+          );
+        })
+      ),
+      of({ x: 0, y: 0 })
+    )
+      .pipe(
+        map(
+          (): ScrollContainerRect => ({
+            left: scrollContainer.scrollLeft,
+            top: scrollContainer.scrollTop,
+            right: scrollContainer.scrollLeft + this.getUsableContainerWidth(),
+            bottom: scrollContainer.scrollTop + this.getUsableContainerHeight(),
+          })
+        ),
+        distinctUntilChanged(
+          (prev, cur) =>
+            prev.left === cur.left &&
+            prev.top === cur.top &&
+            prev.right === cur.right &&
+            prev.bottom === cur.bottom
+        ),
+        takeUntil(this.unsubscribeFromScrollEvent$)
+      )
+      .subscribe((containerBounds) => {
+        this._lastScrollOffset.x =
+          containerBounds.left - this._scrollPosition.x;
+        this._lastScrollOffset.y = containerBounds.top - this._scrollPosition.y;
+        this._scrollPosition = {
+          x: containerBounds.left,
+          y: containerBounds.top,
+        };
+      });
   }
 
   ngAfterViewInit(): void {

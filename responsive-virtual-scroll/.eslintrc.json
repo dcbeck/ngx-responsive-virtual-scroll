@@ -24,7 +24,8 @@
             "prefix": "ngx-responsive-virtual-scroll",
             "style": "kebab-case"
           }
-        ]
+        ],
+        "@angular-eslint/prefer-standalone": "off"
       }
     },
     {

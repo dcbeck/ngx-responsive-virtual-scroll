@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+
 import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
@@ -16,7 +16,7 @@ import { ScrollGridItem } from './types';
 @Component({
   selector: 'demo-grid-item',
   standalone: true,
-  imports: [CommonModule, RandomPhotoComponent, StarIconComponent],
+  imports: [RandomPhotoComponent, StarIconComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: [
     `
