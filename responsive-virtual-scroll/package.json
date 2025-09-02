@@ -1,11 +1,11 @@
 {
   "name": "ngx-responsive-virtual-scroll",
   "author": "Daniel Beck (https://github.com/dcbeck)",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "license": "MIT",
   "peerDependencies": {
-    "@angular/common": ">=18.0.0",
-    "@angular/core": ">=18.0.0",
+    "@angular/common": ">=20.0.0",
+    "@angular/core": ">=20.0.0",
     "rxjs": ">=7.5.2",
     "zone.js": ">=0.13.1"
   },
