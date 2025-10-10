@@ -1,3 +1,4 @@
+/* eslint-disable @angular-eslint/prefer-inject */
 import { CommonModule } from '@angular/common';
 import {
   ChangeDetectionStrategy,

@@ -88,6 +88,7 @@ export class GridItemComponent {
 
   @HostBinding('class') hostClasses = '';
 
+  // eslint-disable-next-line @angular-eslint/prefer-inject
   constructor(cdr: ChangeDetectorRef) {
     effect(() => {
       const classes: string[] = [];

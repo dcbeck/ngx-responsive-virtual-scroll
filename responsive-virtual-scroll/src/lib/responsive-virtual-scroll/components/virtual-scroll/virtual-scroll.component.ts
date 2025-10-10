@@ -1,3 +1,4 @@
+/* eslint-disable @angular-eslint/prefer-inject */
 import {
   Component,
   Input,
@@ -56,7 +57,7 @@ import { VirtualPlaceholder } from '../../directives/virtual-placeholder.directi
 import { VirtualScrollStrategy } from './scroll-strategy/virtual-scroll-strategy';
 import { NGX_VIRTUAL_SCROLL_STRATEGY } from './scroll-strategy/virtual-scroll-strategy.token';
 import { VirtualScrollState } from './scroll-state/virtual-scroll-state';
-import { LI_VIRTUAL_SCROLL_STATE } from './scroll-state/virtual-scroll-state.token';
+import { NGX_VIRTUAL_SCROLL_STATE } from './scroll-state/virtual-scroll-state.token';
 import { withNextFrom } from '../../operators/with-next-from';
 import { delayUntil } from '../../operators/delay-until';
 import { VsState } from './vs-state';
@@ -87,7 +88,7 @@ export interface ScrollViewPadding {
   changeDetection: ChangeDetectionStrategy.OnPush,
   providers: [
     {
-      provide: LI_VIRTUAL_SCROLL_STATE,
+      provide: NGX_VIRTUAL_SCROLL_STATE,
       useExisting: VirtualScrollComponent,
     },
   ],
