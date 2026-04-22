@@ -4,8 +4,8 @@
   "author": "Daniel Beck (https://github.com/dcbeck)",
   "license": "MIT",
   "scripts": {
-    "demo": "nx run demo:serve",
-    "e2e": "nx e2e demo-e2e",
+    "demo": "nx run demo:serve -- --port 4301",
+    "e2e": "nx e2e demo-e2e --no-tui",
     "build": "nx run responsive-virtual-scroll:build:production",
     "build:demo": "nx run demo:build:production -- --base-href='./'"
   },

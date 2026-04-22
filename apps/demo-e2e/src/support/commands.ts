@@ -1,30 +1,38 @@
 /// <reference types="cypress" />
 
-// ***********************************************
-// This example commands.ts shows you how to
-// create various custom commands and overwrite
-// existing commands.
-//
-// For more comprehensive examples of custom
-// commands please read more here:
-// https://on.cypress.io/custom-commands
-// ***********************************************
+// Custom commands for ngx-responsive-virtual-scroll e2e tests
 
-// eslint-disable-next-line @typescript-eslint/no-namespace
-declare namespace Cypress {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+declare global {
+  namespace Cypress {
+    interface Chainable {
+      /**
+       * Get the number of items displayed in the first visible row
+       */
+      getFirstRowItemCount(): Chainable<number>;
+
+      /**
+       * Wait for the virtual scroll to stabilize after viewport changes
+       */
+      waitForVirtualScrollStabilization(): Chainable<void>;
+    }
+  }
 }
 
-// -- This is a parent command --
+Cypress.Commands.add('getFirstRowItemCount', () => {
+  return cy.get('[id^="grid-item-learn-more-btn-"]').then(($items) => {
+    const itemsArray = $items.toArray();
+    if (itemsArray.length === 0) return 0;
 
-//
-// -- This is a child command --
-// Cypress.Commands.add("drag", { prevSubject: 'element'}, (subject, options) => { ... })
-//
-//
-// -- This is a dual command --
-// Cypress.Commands.add("dismiss", { prevSubject: 'optional'}, (subject, options) => { ... })
-//
-//
-// -- This will overwrite an existing command --
-// Cypress.Commands.overwrite("visit", (originalFn, url, options) => { ... })
+    const firstY = itemsArray[0].getBoundingClientRect().top;
+    const sameRowItems = itemsArray.filter(
+      (el) => el.getBoundingClientRect().top === firstY
+    );
+    return sameRowItems.length;
+  });
+});
+
+Cypress.Commands.add('waitForVirtualScrollStabilization', () => {
+  // Wait for virtual scroll to render items
+  cy.get('[id^="grid-item-"]').should('exist');
+  cy.wait(100);
+});
