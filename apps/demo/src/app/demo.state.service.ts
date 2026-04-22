@@ -1,4 +1,11 @@
-import { computed, effect, Injectable, Signal, signal } from '@angular/core';
+import {
+  computed,
+  effect,
+  inject,
+  Injectable,
+  Signal,
+  signal,
+} from '@angular/core';
 
 import { BehaviorSubject } from 'rxjs';
 import { ParamMap, Router } from '@angular/router';
@@ -6,17 +13,18 @@ import { ScrollGridItem, StateKey } from './types';
 
 @Injectable({ providedIn: 'root' })
 export class DemoStateService {
-  selectedItem = signal<ScrollGridItem | null>(null);
-  numberOfItems = signal<number>(500);
+  readonly selectedItem = signal<ScrollGridItem | null>(null);
+  readonly numberOfItems = signal<number>(500);
 
-  itemWidth = signal<number>(300);
-  rowHeight = signal<number>(280);
-  itemPadding = signal<number>(24);
-  scrollViewPadding = signal<number>(24);
-  stretchItems = signal<boolean>(false);
-  isGrid = signal<boolean>(true);
+  readonly itemWidth = signal<number>(300);
+  readonly rowHeight = signal<number>(280);
+  readonly itemPadding = signal<number>(24);
+  readonly scrollViewPadding = signal<number>(24);
+  readonly stretchItems = signal<boolean>(false);
+  readonly isGrid = signal<boolean>(true);
+  readonly initialStateLoaded = signal<boolean>(false);
 
-  initialStateLoaded = signal<boolean>(false);
+  private readonly router = inject(Router);
 
   data: Signal<ScrollGridItem[]> = computed(() => {
     const favoredItemIdSet = this.favoredItemIds();
@@ -36,7 +44,7 @@ export class DemoStateService {
   isGridVisible = signal<boolean>(true);
   gridData$ = new BehaviorSubject<string>('');
 
-  constructor(private readonly router: Router) {
+  constructor() {
     effect(
       () => {
         const state = `${this.itemWidth()}_${this.rowHeight()}_${this.itemPadding()}_${this.scrollViewPadding()}_${this.stretchItems()}_${this.isGrid()}`;

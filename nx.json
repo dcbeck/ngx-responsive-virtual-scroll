@@ -120,5 +120,6 @@
       "typeSeparator": "."
     }
   },
-  "nxCloudId": "68b6f4dcb4177914094abf97"
+  "nxCloudId": "68b6f4dcb4177914094abf97",
+  "analytics": false
 }
