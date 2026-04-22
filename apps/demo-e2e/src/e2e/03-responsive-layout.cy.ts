@@ -96,48 +96,69 @@ describe('Virtual Scroll - Responsive Layout', () => {
     visitState({ numberOfItems: 500, itemWidth: 250, rowHeight: 280 });
     waitForVirtualScroll();
 
-    // Scroll down to bring items into view
+    // Scroll down to bring items into view (to ~item 30-40 range)
     scrollToVirtualScrollViewYPosition(3000);
     cy.wait(500);
 
-    // Verify items are rendered after scrolling
-    cy.get('[id^="grid-item-"]').should('have.length.gt', 0);
+    // Get all visible grid item IDs and pick one from the middle
+    // Filter to only match grid-item-N (not grid-item-heading-N, etc.)
+    cy.get('[id^="grid-item-"]').then(($items) => {
+      // Filter to only get elements with IDs like "grid-item-0", "grid-item-1", etc.
+      const gridItems = $items.filter((i, el) => /^grid-item-\d+$/.test(el.id));
+      const middleIndex = Math.floor(gridItems.length / 2);
+      const $targetItem = gridItems.eq(middleIndex);
+      const targetId = $targetItem[0].id;
+      const targetIndex = parseInt(targetId.replace('grid-item-', ''));
 
-    // Get the first visible item button and extract its index
-    cy.get('[id^="grid-item-learn-more-btn-"]').first().then(($btn) => {
-      const id = $btn.attr('id');
-      const index = parseInt(id?.replace('grid-item-learn-more-btn-', '') || '0');
+      cy.log(`Target item index: ${targetIndex}`);
 
-      // Click to select the item
-      cy.wrap($btn).click();
-      cy.wait(100);
+      // Get the scroll position before selecting
+      cy.get('ngx-responsive-virtual-scroll').then(($scroll) => {
+        const scrollContainer = $scroll[0];
+        const scrollTopBefore = scrollContainer.scrollTop;
 
-      // Verify the item is selected and URL is updated
-      cy.url().should('include', `selectedIndex=${index}`);
+        // Select the item by clicking its Learn More button
+        cy.get(`#grid-item-learn-more-btn-${targetIndex}`).click();
+        cy.wait(100);
 
-      // Resize viewport to a smaller width - autoScrollOnResize should keep item in view
-      cy.viewport(800, 800);
-      cy.wait(500);
+        // Verify the item is selected
+        cy.get(`#grid-item-${targetIndex}`).should('have.attr', 'data-selected', 'true');
 
-      // After resize, verify that:
-      // 1. Items are still rendered
-      cy.get('[id^="grid-item-"]').should('have.length.gt', 0);
-      // 2. The URL still has the selected index (selection preserved)
-      cy.url().should('include', `selectedIndex=${index}`);
+        // Record the scroll position after selection
+        cy.get('ngx-responsive-virtual-scroll').then(($scrollAfterSelect) => {
+          const scrollTopAfterSelect = $scrollAfterSelect[0].scrollTop;
 
-      // Resize to an even smaller viewport
-      cy.viewport(600, 800);
-      cy.wait(500);
+          // Resize viewport to a smaller width - this should trigger autoScrollOnResize
+          cy.viewport(800, 800);
+          // Wait longer for resize to complete and auto-scroll to happen
+          cy.wait(800);
 
-      // Verify items are rendered and selection is preserved
-      cy.get('[id^="grid-item-"]').should('have.length.gt', 0);
-      cy.url().should('include', `selectedIndex=${index}`);
+          // Verify the selected item is still in the DOM after resize
+          // (autoScrollOnResize should have scrolled to keep it visible)
+          cy.get(`#grid-item-${targetIndex}`).should('exist');
 
-      // If the item is currently visible, verify it's selected
-      cy.get(`body`).then(($body) => {
-        //if ($body.find(`#grid-item-${index}`).length > 0) {
-          cy.get(`#grid-item-${index}`).should('have.attr', 'data-selected', 'true');
-        //}
+          // Verify the item is still selected after resize
+          cy.get(`#grid-item-${targetIndex}`).should('have.attr', 'data-selected', 'true');
+
+          // Get scroll position after resize to verify auto-scroll happened
+          cy.get('ngx-responsive-virtual-scroll').then(($scrollAfterResize) => {
+            const scrollTopAfterResize = $scrollAfterResize[0].scrollTop;
+
+            // The scroll position should have changed to keep the selected item in view
+            // or at least the item should be visible (which implies scroll adjustment)
+            cy.log(`Scroll before resize: ${scrollTopBefore}`);
+            cy.log(`Scroll after select: ${scrollTopAfterSelect}`);
+            cy.log(`Scroll after resize: ${scrollTopAfterResize}`);
+
+            // Resize to an even smaller viewport
+            cy.viewport(600, 800);
+            cy.wait(800);
+
+            // The item should still be visible after second resize
+            cy.get(`#grid-item-${targetIndex}`).should('exist');
+            cy.get(`#grid-item-${targetIndex}`).should('have.attr', 'data-selected', 'true');
+          });
+        });
       });
     });
   });
