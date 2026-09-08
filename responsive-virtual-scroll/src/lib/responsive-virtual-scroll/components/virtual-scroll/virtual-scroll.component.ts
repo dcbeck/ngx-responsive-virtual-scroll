@@ -12,7 +12,6 @@ import {
   TemplateRef,
   Inject,
   Output,
-  NgZone,
   TrackByFunction,
   AfterViewInit,
   OnDestroy,
@@ -343,7 +342,6 @@ export class VirtualScrollComponent<T>
     @Inject(NGX_VIRTUAL_SCROLL_STRATEGY)
     private readonly scrollStrategy: VirtualScrollStrategy<T>,
     private readonly renderer: Renderer2,
-    private readonly zone: NgZone,
     private readonly cdr: ChangeDetectorRef,
 
     { nativeElement: listElement }: ElementRef<HTMLElement>
@@ -853,9 +851,7 @@ export class VirtualScrollComponent<T>
     scrollContainer: HTMLElement
   ): Observable<unknown> {
     return new Observable((observer) => {
-      const res = new ResizeObserver(() =>
-        this.zone.run(() => observer.next())
-      );
+      const res = new ResizeObserver(() => observer.next());
       res.observe(scrollContainer);
       this.onDestroy$.subscribe(() => (res.disconnect(), observer.complete()));
     });
