@@ -5,6 +5,7 @@
   "prefix": "demo",
   "sourceRoot": "apps/demo/src",
   "tags": [],
+  "implicitDependencies": ["responsive-virtual-scroll"],
   "targets": {
     "build": {
       "executor": "@angular-devkit/build-angular:application",

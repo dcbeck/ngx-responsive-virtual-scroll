@@ -516,61 +516,15 @@ export class VirtualScrollComponent<T>
           bufferLength,
           gridList,
         ]) => {
-          // The bounds of the scroll container, in pixels
-          const renderedBounds: ScrollContainerRect = {
-            left: scrollPosition.x,
-            top: scrollPosition.y,
-            right: scrollPosition.x + this.getUsableContainerWidth(),
-            bottom: scrollPosition.y + this.getUsableContainerHeight(),
-          };
-          const bufferLengthPx = this.getUsableContainerHeight() * bufferLength;
-
-          // Calculate the number of rendered items per row
-
-          const itemsPerRow = Math.max(
-            1,
+          this.recalculateRenderedWindow(
+            scrollPosition,
+            items,
+            minItemWidth,
+            itemHeight,
+            scrollContainer,
+            bufferLength,
             gridList
-              ? Math.floor(this.getUsableContainerWidth() / minItemWidth!)
-              : 1
           );
-          const virtualScrollHeight =
-            (items.length * itemHeight!) / itemsPerRow;
-
-          // Adjust the bounds by the buffer length and clamp to the edges of the container
-          renderedBounds.top -= bufferLengthPx;
-          renderedBounds.top = Math.max(0, renderedBounds.top);
-          renderedBounds.bottom += bufferLengthPx;
-          renderedBounds.bottom = Math.min(
-            virtualScrollHeight,
-            renderedBounds.bottom
-          );
-
-          cdr.detach();
-
-          // Calculate which items should be rendered on screen
-          this._itemsPerRow = itemsPerRow;
-          this._minIndex = Math.min(
-            items.length - 1,
-            Math.floor(renderedBounds.top / itemHeight!) * itemsPerRow
-          );
-          this._maxIndex = Math.min(
-            items.length - 1,
-            Math.ceil(renderedBounds.bottom / itemHeight!) * itemsPerRow
-          );
-          this._renderedItems = items.slice(this._minIndex, this._maxIndex + 1);
-
-          cdr.reattach();
-          cdr.markForCheck();
-
-          // Calculate the virtual scroll space before/after the rendered items
-          const spaceBeforePx =
-            Math.floor(this._minIndex / itemsPerRow) * itemHeight!;
-          const spaceAfterPx =
-            Math.floor((items.length - (this._maxIndex + 1)) / itemsPerRow) *
-            itemHeight!;
-
-          // Update the virtual spacers in the DOM (optimized)
-          this.updateVirtualSpacers(spaceBeforePx, spaceAfterPx);
         }
       );
 
@@ -598,12 +552,91 @@ export class VirtualScrollComponent<T>
         (refItem) => (this.rowHeight = this.calculateItemHeight(refItem))
       );
   }
+  /**
+   * Calculates which items should be rendered for the given logical scroll
+   * position and updates the rendered views and the virtual spacers.
+   */
+  private recalculateRenderedWindow(
+    scrollPosition: VirtualScrollState.Point,
+    items: T[],
+    minItemWidth: number | undefined,
+    itemHeight: number | undefined,
+    scrollContainer: HTMLElement,
+    bufferLength: number,
+    gridList: boolean
+  ): void {
+    // The bounds of the scroll container, in pixels
+    const renderedBounds: ScrollContainerRect = {
+      left: scrollPosition.x,
+      top: scrollPosition.y,
+      right: scrollPosition.x + this.getUsableContainerWidth(),
+      bottom: scrollPosition.y + this.getUsableContainerHeight(),
+    };
+    const bufferLengthPx = this.getUsableContainerHeight() * bufferLength;
+
+    // Calculate the number of rendered items per row
+
+    const itemsPerRow = Math.max(
+      1,
+      gridList
+        ? Math.floor(this.getUsableContainerWidth() / minItemWidth!)
+        : 1
+    );
+    const virtualScrollHeight =
+      (items.length * itemHeight!) / itemsPerRow;
+
+    // Adjust the bounds by the buffer length and clamp to the edges of the container
+    renderedBounds.top -= bufferLengthPx;
+    renderedBounds.top = Math.max(0, renderedBounds.top);
+    renderedBounds.bottom += bufferLengthPx;
+    renderedBounds.bottom = Math.min(
+      virtualScrollHeight,
+      renderedBounds.bottom
+    );
+
+    this.cdr.detach();
+
+    // Calculate which items should be rendered on screen
+    this._itemsPerRow = itemsPerRow;
+    this._minIndex = Math.min(
+      items.length - 1,
+      Math.floor(renderedBounds.top / itemHeight!) * itemsPerRow
+    );
+    this._maxIndex = Math.min(
+      items.length - 1,
+      Math.ceil(renderedBounds.bottom / itemHeight!) * itemsPerRow
+    );
+    this._renderedItems = items.slice(this._minIndex, this._maxIndex + 1);
+
+    this.cdr.reattach();
+    this.cdr.markForCheck();
+
+    // Calculate the virtual scroll space before/after the rendered items
+    const spaceBeforePx =
+      Math.floor(this._minIndex / itemsPerRow) * itemHeight!;
+    const spaceAfterPx =
+      Math.floor((items.length - (this._maxIndex + 1)) / itemsPerRow) *
+      itemHeight!;
+
+    // Spacers are laid out relative to the current scroll offset segment so
+    // the container's total element height stays within the browser's cap.
+    const { before, after } = this.toPhysicalSpacerRange(
+      spaceBeforePx,
+      spaceAfterPx
+    );
+
+    // Update the virtual spacers in the DOM (optimized)
+    this.updateVirtualSpacers(before, after);
+  }
 
   private listenToMouseEventsFromScrollContainer(
     scrollContainer: HTMLElement,
     capture: boolean
   ) {
     this.unsubscribeFromScrollEvent$.next();
+    fromEvent<WheelEvent>(scrollContainer, 'wheel', { passive: true })
+      .pipe(takeUntil(this.unsubscribeFromScrollEvent$))
+      .subscribe((event) => this.reanchorOnWheel(scrollContainer, event));
     merge(
       fromEvent<MouseEvent>(scrollContainer, 'scroll', { capture }),
       this.scrollContainerResize(scrollContainer).pipe(
@@ -634,12 +667,14 @@ export class VirtualScrollComponent<T>
         takeUntil(this.unsubscribeFromScrollEvent$)
       )
       .subscribe((containerBounds) => {
+        const physicalTop = this.syncScrollOffset(containerBounds.top);
+        const logicalTop = physicalTop + this.scrollOffsetPx;
         this._lastScrollOffset.x =
           containerBounds.left - this._scrollPosition.x;
-        this._lastScrollOffset.y = containerBounds.top - this._scrollPosition.y;
+        this._lastScrollOffset.y = logicalTop - this._scrollPosition.y;
         this._scrollPosition = {
           x: containerBounds.left,
-          y: containerBounds.top,
+          y: logicalTop,
         };
       });
   }
@@ -681,7 +716,7 @@ export class VirtualScrollComponent<T>
     if (this.autoScrollOnResize()) {
       this.stateRef.itemsPerRowChanged
         .pipe(distinctUntilChanged(), takeUntil(this.destroy$))
-        .subscribe(async (itemsPerRow) => {
+        .subscribe(async () => {
           const item = this.stateRef.lastFocusedItem.value;
 
           await lastValueFrom(this.waitForRenderComplete.pipe(take(1)));
@@ -695,12 +730,18 @@ export class VirtualScrollComponent<T>
                   this.itemHeightReal != null &&
                   this.itemHeightReal !== undefined
                 ) {
-                  const row = Math.floor(index / itemsPerRow);
-                  const scrollTop = row * this.itemHeightReal;
+                  // Read the settled items-per-row at execution time — the
+                  // emitted value can be a transient from an intermediate
+                  // layout (e.g. while a sibling panel opens) and the
+                  // delayed callbacks may run out of emission order.
+                  const row = Math.floor(
+                    index / Math.max(1, this.stateRef.itemsPerRow.value)
+                  );
                   const style = getComputedStyle(this.scrollContainer);
                   const paddingTop = parseFloat(style.paddingTop) || 0;
-                  this.scrollContainer.scrollTop = scrollTop + paddingTop;
-                  this.cdr.markForCheck();
+                  this.scrollToLogicalPosition(
+                    row * this.itemHeightReal + paddingTop
+                  );
                 }
               }
             }
@@ -847,6 +888,17 @@ export class VirtualScrollComponent<T>
     this.updateViewInfo(this._renderedViews, view);
   }
 
+  /**
+   * Logical scroll height (in px) that the container's scrollable area does
+   * not represent because the browser caps element heights. The container
+   * scrolls within the current segment (0..maxScrollTop) while
+   * `scrollOffsetPx` is added on top to get the logical position.
+   */
+  private scrollOffsetPx = 0;
+
+  /** Cached result of the browser max element height probe. */
+  private static browserMaxElementHeight: number | null = null;
+
   private scrollContainerResize(
     scrollContainer: HTMLElement
   ): Observable<unknown> {
@@ -855,6 +907,227 @@ export class VirtualScrollComponent<T>
       res.observe(scrollContainer);
       this.onDestroy$.subscribe(() => (res.disconnect(), observer.complete()));
     });
+  }
+
+  /**
+   * Keeps the container's physical scrollable area within what the browser
+   * can represent when the total logical content height exceeds the
+   * browser's maximum element height: the container scrolls within the
+   * current segment and `scrollOffsetPx` holds the logical height hidden
+   * above it. Crossing segment boundaries is intent-driven (wheel events,
+   * see reanchorOnWheel); raw scroll events only keep the offset consistent.
+   * Returns the effective physical scroll top.
+   */
+  private syncScrollOffset(physicalTop: number): number {
+    const scrollContainer = this.scrollContainer;
+    if (!scrollContainer) return physicalTop;
+
+    const clientHeight = scrollContainer.clientHeight;
+    if (clientHeight <= 0) return physicalTop;
+
+    const logicalMaxScrollTop = this.getTotalLogicalHeight() - clientHeight;
+    const physicalMaxScrollTop = scrollContainer.scrollHeight - clientHeight;
+
+    if (logicalMaxScrollTop <= physicalMaxScrollTop) {
+      // The whole logical range is representable; no segmentation needed.
+      this.scrollOffsetPx = 0;
+    }
+
+    return physicalTop;
+  }
+
+  /**
+   * Advances the logical scroll position when the user wheels past a
+   * physical segment boundary. The browser cannot scroll beyond the
+   * segment's edge, so the wheel delta is applied to `scrollOffsetPx`
+   * instead; the rendered window follows on the next pipeline tick.
+   */
+  private reanchorOnWheel(scrollContainer: HTMLElement, event: WheelEvent): void {
+    if (event.ctrlKey || event.deltaY === 0) return;
+
+    const clientHeight = scrollContainer.clientHeight;
+    if (clientHeight <= 0) return;
+
+    const physicalMaxScrollTop = scrollContainer.scrollHeight - clientHeight;
+    const logicalMaxScrollTop = this.getTotalLogicalHeight() - clientHeight;
+    if (logicalMaxScrollTop <= physicalMaxScrollTop) return;
+
+    const physicalTop = scrollContainer.scrollTop;
+    const deltaY = event.deltaMode === 1 ? event.deltaY * 40 : event.deltaY;
+
+    if (deltaY > 0 && physicalTop >= physicalMaxScrollTop - 1) {
+      // Wheeling down at the physical bottom with logical content below.
+      const remainingBelow = logicalMaxScrollTop - (this.scrollOffsetPx + physicalTop);
+      const step = Math.min(deltaY, remainingBelow);
+      if (step > 0) {
+        this.scrollOffsetPx += step;
+        this._scrollPosition = {
+          x: this._scrollPosition.x,
+          y: this.scrollOffsetPx + physicalTop,
+        };
+      }
+    } else if (deltaY < 0 && this.scrollOffsetPx > 0 && physicalTop <= 1) {
+      // Wheeling up at the physical top with hidden logical content above.
+      const step = Math.min(-deltaY, this.scrollOffsetPx);
+      if (step > 0) {
+        this.scrollOffsetPx -= step;
+        this._scrollPosition = {
+          x: this._scrollPosition.x,
+          y: this.scrollOffsetPx + physicalTop,
+        };
+      }
+    }
+  }
+
+  /**
+   * Scrolls the container so the given logical content position is at the
+   * top edge of the viewport, re-anchoring the scroll segment first if the
+   * position lies outside what the current physical scroll range represents.
+   */
+  private scrollToLogicalPosition(logicalTop: number): void {
+    const scrollContainer = this.scrollContainer;
+    if (!scrollContainer) return;
+
+    const clientHeight = scrollContainer.clientHeight;
+    let offset = this.scrollOffsetPx;
+    let physicalTop = logicalTop - offset;
+
+    // The live physical range reflects the freshly rendered spacers; if the
+    // target sits outside it the segment must be re-anchored around it.
+    const physicalMaxScrollTop = scrollContainer.scrollHeight - clientHeight;
+    if (physicalTop < 0 || physicalTop > physicalMaxScrollTop) {
+      const segmentMaxScrollTop =
+        this.getBrowserMaxElementHeight() - clientHeight;
+      const itemHeight = this.stateRef.itemHeight.value ?? 0;
+      const bufferPx =
+        this.getUsableContainerHeight() * this.stateRef.bufferLength.value;
+
+      // The window rendered for the target extends bufferPx above the
+      // viewport; parking the viewport further than that below the segment
+      // start would clamp the before spacer to zero and visually shift the
+      // rendered items. Row-align the offset to the first buffered row.
+      const maxOffset =
+        itemHeight > 0
+          ? Math.floor((logicalTop - bufferPx) / itemHeight) * itemHeight
+          : logicalTop;
+      const logicalMaxScrollTop = Math.max(
+        0,
+        this.getTotalLogicalHeight() - clientHeight
+      );
+      offset = Math.max(
+        0,
+        Math.min(maxOffset, logicalMaxScrollTop - segmentMaxScrollTop)
+      );
+      physicalTop = logicalTop - offset;
+      this.scrollOffsetPx = offset;
+
+      // Synchronously re-render the window for the new segment so the
+      // container is actually able to scroll to the target position.
+      const minItemWidth = this.itemWidthCalculated.minimumItemWidthValue;
+      if (itemHeight && (minItemWidth || !this.isGridList)) {
+        this.recalculateRenderedWindow(
+          { x: this._scrollPosition.x, y: logicalTop },
+          this.stateRef.items.value,
+          minItemWidth,
+          itemHeight,
+          scrollContainer,
+          this.stateRef.bufferLength.value,
+          this.isGridList
+        );
+      }
+    }
+
+    scrollContainer.scrollTop = physicalTop;
+    this.cdr.markForCheck();
+  }
+
+  private getTotalLogicalHeight(): number {
+    const itemHeight = this.stateRef.itemHeight.value;
+    if (!itemHeight) return 0;
+    return (
+      (this.stateRef.items.value.length * itemHeight) /
+      Math.max(1, this.stateRef.itemsPerRow.value)
+    );
+  }
+
+  /**
+   * Converts logical spacer heights into physical spacer heights that keep
+   * the container's total element height within the browser's cap. Without a
+   * cap (or for lists that fit below it) the logical heights pass through
+   * unchanged.
+   */
+
+
+  private toPhysicalSpacerRange(
+    beforeLogical: number,
+    afterLogical: number
+  ): { before: number; after: number } {
+    const maxElementHeight = this.getBrowserMaxElementHeight();
+    if (!Number.isFinite(maxElementHeight)) {
+      return { before: beforeLogical, after: afterLogical };
+    }
+
+    const itemHeight = this.stateRef.itemHeight.value ?? 0;
+    const rowsHeight =
+      itemHeight > 0
+        ? Math.ceil(
+            (this._maxIndex - this._minIndex + 1) /
+              Math.max(1, this._itemsPerRow)
+          ) * itemHeight
+        : 0;
+
+    const before = Math.min(
+      Math.max(beforeLogical - this.scrollOffsetPx, 0),
+      maxElementHeight
+    );
+    const after = Math.max(
+      0,
+      Math.min(afterLogical, maxElementHeight - before - rowsHeight)
+    );
+    return { before, after };
+  }
+
+  /**
+   * Browsers cap the height of a single element (Chromium at 2^25 px), which
+   * also caps the scrollable area absolute spacers can provide. The cap is
+   * detected once with a throwaway probe element; infinity (probe failed or
+   * environment without a cap) disables segmentation entirely.
+   */
+  private getBrowserMaxElementHeight(): number {
+    if (VirtualScrollComponent.browserMaxElementHeight === null) {
+      VirtualScrollComponent.browserMaxElementHeight = (() => {
+        try {
+          const doc = this.scrollContainer?.ownerDocument;
+          if (!doc?.body) return Number.POSITIVE_INFINITY;
+          // Off-screen via fixed positioning. Explicit width is REQUIRED —
+          // a shrink-to-fit probe collapses to zero width and Chromium then
+          // ignores programmatic scrolling. Do NOT add visibility:hidden or
+          // pointer-events:none either — same effect.
+          const probe = doc.createElement('div');
+          probe.style.cssText =
+            'position:fixed;top:-99999px;left:-99999px;overflow:scroll;height:100px;width:100px;';
+          const inner = doc.createElement('div');
+          inner.style.height = '999999999px';
+          probe.appendChild(inner);
+          doc.body.appendChild(probe);
+          probe.scrollTop = 999999999;
+          const maxElementHeight =
+            probe.scrollTop > 0
+              ? probe.scrollTop + probe.clientHeight
+              : // Scroll assignment ignored (pathological environment):
+                // fall back to Chromium's documented 2^25 px element cap.
+                33554432;
+          probe.remove();
+
+          return maxElementHeight > 0
+            ? maxElementHeight
+            : Number.POSITIVE_INFINITY;
+        } catch {
+          return Number.POSITIVE_INFINITY;
+        }
+      })();
+    }
+    return VirtualScrollComponent.browserMaxElementHeight;
   }
 
   private get scrollDebounce(): Observable<VirtualScrollState.Point> {
@@ -1012,6 +1285,7 @@ export class VirtualScrollComponent<T>
   }
 
   private clearRenderedViews(): void {
+    this.scrollOffsetPx = 0;
     this._renderedItems = [];
 
     for (const renderedView of this._renderedViews.values()) {

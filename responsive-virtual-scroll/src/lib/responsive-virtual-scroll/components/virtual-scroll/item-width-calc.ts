@@ -26,6 +26,11 @@ export class ItemWidthCalc {
     return this.minItemWidthObservable;
   }
 
+  /** Current minimum item width without subscribing, for synchronous recalculations. */
+  get minimumItemWidthValue(): number | undefined {
+    return this.minItemWidthObservable.value;
+  }
+
   constructor() {
     combineLatest([
       this.shouldStretchItems$,
@@ -57,7 +62,9 @@ export class ItemWidthCalc {
         if (shouldStretchItems && isGrid) {
           // scrollContainerWidth is already the usable width (excludes
           // padding and the scrollbar); floor() guarantees no wrapping.
-          const stretchedWidth = Math.floor(scrollContainerWidth / itemsPerRow);
+          const stretchedWidth = Math.floor(
+            scrollContainerWidth - 1 / itemsPerRow
+          );
           this.setCurrentItemWidth(stretchedWidth);
           return;
         }
