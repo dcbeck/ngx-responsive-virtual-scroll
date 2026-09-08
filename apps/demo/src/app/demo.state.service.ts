@@ -21,6 +21,12 @@ export class DemoStateService {
   readonly itemPadding = signal<number>(24);
   readonly scrollViewPadding = signal<number>(24);
   readonly stretchItems = signal<boolean>(false);
+  readonly bufferLength = signal(1);
+  readonly viewCache = signal<number | boolean>(false);
+  readonly scrollDebounceMs = signal(50);
+  readonly asyncRendering = signal(false);
+  readonly customPlaceholder = signal(false);
+  readonly autoSize = signal(false);
   readonly isGrid = signal<boolean>(true);
   readonly initialStateLoaded = signal<boolean>(false);
 
@@ -71,6 +77,12 @@ export class DemoStateService {
             scrollViewPadding: this.scrollViewPadding(),
             stretchItems: this.stretchItems(),
             isGrid: this.isGrid(),
+            bufferLength: this.bufferLength(),
+            viewCache: this.viewCache(),
+            scrollDebounceMs: this.scrollDebounceMs(),
+            asyncRendering: this.asyncRendering(),
+            customPlaceholder: this.customPlaceholder(),
+            autoSize: this.autoSize(),
           },
           queryParamsHandling: 'replace',
         });
@@ -166,6 +178,33 @@ export class DemoStateService {
     } else {
       this.isGrid.set(true);
     }
+
+    const bufferLength = this.extractInt(paramMap, 'bufferLength');
+    if (bufferLength !== null && bufferLength >= 0) {
+      this.bufferLength.set(bufferLength);
+    } else {
+      this.bufferLength.set(1);
+    }
+
+    const scrollDebounceMs = this.extractInt(paramMap, 'scrollDebounceMs');
+    if (scrollDebounceMs !== null && scrollDebounceMs >= 0) {
+      this.scrollDebounceMs.set(scrollDebounceMs);
+    } else {
+      this.scrollDebounceMs.set(50);
+    }
+
+    const viewCacheParam = paramMap.get('viewCache');
+    if (viewCacheParam === 'true') {
+      this.viewCache.set(true);
+    } else if (viewCacheParam !== null && !isNaN(parseInt(viewCacheParam))) {
+      this.viewCache.set(Math.max(0, parseInt(viewCacheParam)));
+    } else {
+      this.viewCache.set(false);
+    }
+
+    this.asyncRendering.set(this.extractBool(paramMap, 'asyncRendering') ?? false);
+    this.customPlaceholder.set(this.extractBool(paramMap, 'customPlaceholder') ?? false);
+    this.autoSize.set(this.extractBool(paramMap, 'autoSize') ?? false);
 
     setTimeout(() => {
       if (this.initialStateLoaded() === false) {

@@ -6,8 +6,27 @@ export type StateKey =
   | 'itemPadding'
   | 'scrollViewPadding'
   | 'stretchItems'
-  | 'isGrid';
+  | 'isGrid'
+  | 'bufferLength'
+  | 'viewCache'
+  | 'scrollDebounceMs'
+  | 'asyncRendering'
+  | 'customPlaceholder'
+  | 'autoSize';
 
 export type StateParams = {
-  [K in StateKey]: string | number | boolean | undefined;
+  selectedIndex?: number;
+  numberOfItems?: number;
+  itemWidth?: number;
+  rowHeight?: number;
+  itemPadding?: number;
+  scrollViewPadding?: number;
+  stretchItems?: boolean;
+  isGrid?: boolean;
+  bufferLength?: number;
+  viewCache?: number | boolean;
+  scrollDebounceMs?: number;
+  asyncRendering?: boolean;
+  customPlaceholder?: boolean;
+  autoSize?: boolean;
 };

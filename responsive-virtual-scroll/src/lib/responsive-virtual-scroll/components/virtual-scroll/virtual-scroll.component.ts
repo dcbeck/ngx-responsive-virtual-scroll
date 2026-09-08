@@ -131,6 +131,7 @@ export interface ScrollViewPadding {
     `
       .ngx-scroll-view-grid-item {
         display: inline-flex !important;
+        vertical-align: top;
         width: var(--item-width);
         height: var(--item-height);
         min-width: var(--item-width);
@@ -370,7 +371,7 @@ export class VirtualScrollComponent<T>
               }
             }
             const index = renderViews.findIndex((el) => el.contains(target));
-            if (index > 0 && index < itemValues.length) {
+            if (index >= 0 && index < itemValues.length) {
               this.stateRef.lastFocusedItem.next(itemValues[index]);
             }
           });
@@ -804,6 +805,10 @@ export class VirtualScrollComponent<T>
 
   public get waitForRenderComplete(): Observable<void> {
     return this.stateRef.renderingViews.pipe(
+      // Resolve immediately when no render pass is in flight; the
+      // renderingViews subject only emits on transitions, so an idle
+      // component would otherwise deadlock waiting for a first emission.
+      startWith(this.stateRef.getRenderingViewsValue()),
       filter((rendering) => !rendering),
       map(() => undefined),
       take(1)

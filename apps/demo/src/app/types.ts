@@ -7,7 +7,13 @@ export type StateKey =
   | 'itemPadding'
   | 'scrollViewPadding'
   | 'stretchItems'
-  | 'isGrid';
+  | 'isGrid'
+  | 'bufferLength'
+  | 'viewCache'
+  | 'scrollDebounceMs'
+  | 'asyncRendering'
+  | 'customPlaceholder'
+  | 'autoSize';
 
 export type ScrollGridItem = {
   id: string;

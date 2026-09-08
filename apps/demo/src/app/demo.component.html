@@ -108,11 +108,16 @@
         [stretchItems]="state.stretchItems()"
         [autoScrollOnResize]="true"
         [trackBy]="trackByFn"
+        [bufferLength]="state.bufferLength()"
+        [viewCache]="state.viewCache()"
+        [scrollDebounceMs]="state.scrollDebounceMs()"
+        [asyncRendering]="state.asyncRendering()"
         [ngStyle]="{ 'padding.px': scrollPadding() }"
         (itemsPerRowChange)="itemsPerRow.set($event)"
       >
         <div
           *ngxResponsiveVirtualScrollItem="let item"
+          [attr.data-vs-index]="item.index"
           [ngStyle]="{ 'padding.px': itemPadding() }"
         >
           <demo-grid-item
@@ -127,19 +132,35 @@
             (isSelectedChange)="selectItem(item)"
           ></demo-grid-item>
         </div>
+        @if (state.customPlaceholder()) {
+        <div
+          *ngxResponsiveVirtualScrollItemPlaceholder="let index = index"
+          class="virtual-custom-placeholder"
+          [attr.data-vs-placeholder]="index"
+          [style.width.px]="state.itemWidth()"
+          [style.height.px]="state.rowHeight()"
+          [style.margin.px]="0"
+        >
+          Loading...
+        </div>
+        }
       </ngx-responsive-virtual-scroll>
       } @else {
-
       <ngx-responsive-virtual-scroll
         class="rn-scrollbar w-full"
         [items]="state.data()"
         [type]="'list'"
         [trackBy]="trackByFn"
-        [rowHeight]="state.rowHeight()"
+        [rowHeight]="state.autoSize() ? undefined : state.rowHeight()"
+        [bufferLength]="state.bufferLength()"
+        [viewCache]="state.viewCache()"
+        [scrollDebounceMs]="state.scrollDebounceMs()"
+        [asyncRendering]="state.asyncRendering()"
         [ngStyle]="{ 'padding.px': scrollPadding() }"
       >
         <div
           *ngxResponsiveVirtualScrollItem="let item"
+          [attr.data-vs-index]="item.index"
           [ngStyle]="{ 'padding.px': itemPadding(), 'width.px': 300 }"
         >
           <demo-grid-item
@@ -153,6 +174,18 @@
             (isSelectedChange)="selectItem(item)"
           ></demo-grid-item>
         </div>
+        @if (state.customPlaceholder()) {
+        <div
+          *ngxResponsiveVirtualScrollItemPlaceholder="let index = index"
+          class="virtual-custom-placeholder"
+          [attr.data-vs-placeholder]="index"
+          [style.width.px]="300"
+          [style.height.px]="state.rowHeight()"
+          [style.margin.px]="0"
+        >
+          Loading...
+        </div>
+        }
       </ngx-responsive-virtual-scroll>
       } } } @else {
       <div class="p-6 text-lg text-red-500">

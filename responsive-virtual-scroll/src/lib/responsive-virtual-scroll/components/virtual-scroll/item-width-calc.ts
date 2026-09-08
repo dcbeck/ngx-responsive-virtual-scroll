@@ -55,9 +55,9 @@ export class ItemWidthCalc {
         }
 
         if (shouldStretchItems && isGrid) {
-          const stretchedWidth = Math.floor(
-            (scrollContainerWidth - 20) / itemsPerRow
-          );
+          // scrollContainerWidth is already the usable width (excludes
+          // padding and the scrollbar); floor() guarantees no wrapping.
+          const stretchedWidth = Math.floor(scrollContainerWidth / itemsPerRow);
           this.setCurrentItemWidth(stretchedWidth);
           return;
         }
