@@ -1,6 +1,6 @@
 {
   "name": "@ngx-responsive-virtual-scroll/source",
-  "version": "2.0.2",
+  "version": "2.1.0",
   "author": "Daniel Beck (https://github.com/dcbeck)",
   "license": "MIT",
   "scripts": {
@@ -69,5 +69,16 @@
     "ts-jest": "29.4.1",
     "ts-node": "10.9.1",
     "typescript": ">=5.9.0"
+  },
+  "allowScripts": {
+    "@parcel/watcher@2.5.6": true,
+    "@swc/core@1.15.8": true,
+    "cypress@15.9.0": true,
+    "esbuild@0.27.3": true,
+    "fsevents@2.3.3": true,
+    "lmdb@3.5.1": true,
+    "msgpackr-extract@3.0.3": true,
+    "nx@22.6.5": true,
+    "unrs-resolver@1.11.1": true
   }
 }
