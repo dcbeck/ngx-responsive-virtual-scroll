@@ -754,10 +754,12 @@ export class VirtualScrollComponent<T>
   private _containerPaddingCache: {
     width: {
       clientWidth: number;
+      rectWidth: number;
       useable: number;
     } | null;
     height: {
       clientHeight: number;
+      rectHeight: number;
       useable: number;
     } | null;
   } = { width: null, height: null };
@@ -766,17 +768,39 @@ export class VirtualScrollComponent<T>
     const container = this.scrollContainer;
     if (!container) return 0;
 
-    // Only recalculate if clientWidth has changed
+    // getBoundingClientRect is fractional while clientWidth is an integer
+    // that may round UP past the true content width (observed in Safari:
+    // true 859.69px reported as 860px). Sizing stretched items from the
+    // rounded-up value overflows the row by a fraction of a pixel and wraps
+    // the last item of every row. Measure from the fractional border box
+    // instead so itemsPerRow * stretchedWidth never exceeds the real width.
+    const rectWidth = container.getBoundingClientRect().width;
+    // Only recalculate if the container size has changed
     if (
       !this._containerPaddingCache.width ||
-      this._containerPaddingCache.width.clientWidth !== container.clientWidth
+      this._containerPaddingCache.width.clientWidth !==
+        container.clientWidth ||
+      this._containerPaddingCache.width.rectWidth !== rectWidth
     ) {
       const style = getComputedStyle(container);
       const paddingLeft = parseFloat(style.paddingLeft) || 0;
       const paddingRight = parseFloat(style.paddingRight) || 0;
+      const borderLeft = parseFloat(style.borderLeftWidth) || 0;
+      const borderRight = parseFloat(style.borderRightWidth) || 0;
+      const scrollbarWidth = Math.max(
+        0,
+        container.offsetWidth - container.clientWidth - borderLeft - borderRight
+      );
       this._containerPaddingCache.width = {
         clientWidth: container.clientWidth,
-        useable: container.clientWidth - paddingLeft - paddingRight,
+        rectWidth,
+        useable:
+          rectWidth -
+          paddingLeft -
+          paddingRight -
+          borderLeft -
+          borderRight -
+          scrollbarWidth,
       };
     }
     return this._containerPaddingCache.width!.useable;
@@ -786,17 +810,37 @@ export class VirtualScrollComponent<T>
     const container = this.scrollContainer;
     if (!container) return 0;
 
-    // Only recalculate if clientHeight has changed
+    // Fractional for the same reason as the width (see above).
+    const rectHeight = container.getBoundingClientRect().height;
+    // Only recalculate if the container size has changed
     if (
       !this._containerPaddingCache.height ||
-      this._containerPaddingCache.height.clientHeight !== container.clientHeight
+      this._containerPaddingCache.height.clientHeight !==
+        container.clientHeight ||
+      this._containerPaddingCache.height.rectHeight !== rectHeight
     ) {
       const style = getComputedStyle(container);
       const paddingTop = parseFloat(style.paddingTop) || 0;
       const paddingBottom = parseFloat(style.paddingBottom) || 0;
+      const borderTop = parseFloat(style.borderTopWidth) || 0;
+      const borderBottom = parseFloat(style.borderBottomWidth) || 0;
+      const scrollbarHeight = Math.max(
+        0,
+        container.offsetHeight -
+          container.clientHeight -
+          borderTop -
+          borderBottom
+      );
       this._containerPaddingCache.height = {
         clientHeight: container.clientHeight,
-        useable: container.clientHeight - paddingTop - paddingBottom,
+        rectHeight,
+        useable:
+          rectHeight -
+          paddingTop -
+          paddingBottom -
+          borderTop -
+          borderBottom -
+          scrollbarHeight,
       };
     }
     return this._containerPaddingCache.height!.useable;
