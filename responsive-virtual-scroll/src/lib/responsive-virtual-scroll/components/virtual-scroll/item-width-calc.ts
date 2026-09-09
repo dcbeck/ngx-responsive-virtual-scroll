@@ -60,10 +60,8 @@ export class ItemWidthCalc {
         }
 
         if (shouldStretchItems && isGrid) {
-          // scrollContainerWidth is already the usable width (excludes
-          // padding and the scrollbar); floor() guarantees no wrapping.
           const stretchedWidth = Math.floor(
-            scrollContainerWidth - 1 / itemsPerRow
+            (scrollContainerWidth) / itemsPerRow
           );
           this.setCurrentItemWidth(stretchedWidth);
           return;
@@ -100,9 +98,12 @@ export class ItemWidthCalc {
   }
 
   setScrollContainerWidth(value: number) {
-    if (this.shouldStretchItems$.value) {
-      this.scrollContainerWidth$.next(value);
-    }
+    // Forward unconditionally: the stretch branch in the combiner uses the
+    // latest width together with the latest itemsPerRow. Gating this on
+    // shouldStretchItems strands a stale (or zero) width that is then
+    // divided by a live itemsPerRow when stretch is enabled, producing
+    // persistently wrong item widths (wrap/overflow) until the next resize.
+    this.scrollContainerWidth$.next(value);
   }
 
   /**
